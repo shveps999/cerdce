@@ -5,9 +5,9 @@ from .notification_service import NotificationService
 from .moderation_service import ModerationService
 
 __all__ = [
-    'UserService',
-    'CategoryService', 
-    'PostService',
-    'NotificationService',
-    'ModerationService'
-] 
+    "UserService",
+    "CategoryService",
+    "PostService",
+    "NotificationService",
+    "ModerationService",
+]

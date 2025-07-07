@@ -8,9 +8,11 @@ from events_bot.bot.utils import get_db_session
 
 router = Router()
 
+
 def register_start_handlers(dp: Router):
     """Регистрация обработчиков команды start"""
     dp.include_router(router)
+
 
 @router.message(F.text == "/start")
 async def cmd_start(message: Message, state: FSMContext):
@@ -22,20 +24,20 @@ async def cmd_start(message: Message, state: FSMContext):
             telegram_id=message.from_user.id,
             username=message.from_user.username,
             first_name=message.from_user.first_name,
-            last_name=message.from_user.last_name
+            last_name=message.from_user.last_name,
         )
-        
+
         # Проверяем, есть ли у пользователя город
         if not user.city:
             await message.answer(
                 "👋 Добро пожаловать в Events Bot!\n\n"
                 "Для начала работы выберите ваш город:",
-                reply_markup=get_city_keyboard()
+                reply_markup=get_city_keyboard(),
             )
             await state.set_state(UserStates.waiting_for_city)
         else:
             await message.answer(
                 f"👋 С возвращением, {user.first_name or user.username or 'пользователь'}!\n\n"
                 "Выберите действие:",
-                reply_markup=get_main_keyboard()
-            ) 
+                reply_markup=get_main_keyboard(),
+            )

@@ -1,5 +1,6 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
+
 def get_city_keyboard() -> ReplyKeyboardMarkup:
     """Клавиатура для выбора города"""
     keyboard = [
@@ -8,6 +9,6 @@ def get_city_keyboard() -> ReplyKeyboardMarkup:
         [KeyboardButton(text="Казань"), KeyboardButton(text="Нижний Новгород")],
         [KeyboardButton(text="Челябинск"), KeyboardButton(text="Самара")],
         [KeyboardButton(text="Уфа"), KeyboardButton(text="Ростов-на-Дону")],
-        [KeyboardButton(text="🔙 Назад")]
+        [KeyboardButton(text="🔙 Назад")],
     ]
-    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True) 
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)

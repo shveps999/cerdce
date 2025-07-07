@@ -4,8 +4,8 @@ from .post_repository import PostRepository
 from .moderation_repository import ModerationRepository
 
 __all__ = [
-    'UserRepository',
-    'CategoryRepository',
-    'PostRepository',
-    'ModerationRepository',
-] 
+    "UserRepository",
+    "CategoryRepository",
+    "PostRepository",
+    "ModerationRepository",
+]

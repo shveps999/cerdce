@@ -5,9 +5,9 @@ from .callback_handlers import register_callback_handlers
 from .moderation_handlers import register_moderation_handlers
 
 __all__ = [
-    'register_start_handlers',
-    'register_user_handlers', 
-    'register_post_handlers',
-    'register_callback_handlers',
-    'register_moderation_handlers'
-] 
+    "register_start_handlers",
+    "register_user_handlers",
+    "register_post_handlers",
+    "register_callback_handlers",
+    "register_moderation_handlers",
+]
