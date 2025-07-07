@@ -1,0 +1,51 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v1
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync --frozen
+
+    - name: Run ruff linter
+      run: |
+        uv run ruff check .
+
+    - name: Run ruff formatter
+      run: |
+        uv run ruff format --check .
+
+    - name: Run mypy type checker
+      run: |
+        uv run mypy events_bot/ --ignore-missing-imports
+
+    - name: Check for security vulnerabilities
+      run: |
+        uv run safety check
+
+    - name: Validate pyproject.toml
+      run: |
+        uv run validate-pyproject
