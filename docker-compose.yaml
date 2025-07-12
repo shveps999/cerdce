@@ -28,6 +28,4 @@ services:
       # Дополнительные настройки
       ENVIRONMENT: production
       DEBUG: "false"
-    volumes:
-      - uploads_data:/app/uploads:rw
     restart: unless-stopped
