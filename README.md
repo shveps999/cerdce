@@ -178,12 +178,32 @@ events_bot/
 
 - `DATABASE_URL` - URL базы данных (автоматически преобразуется в асинхронный)
 - `BOT_TOKEN` - Токен Telegram бота (обязательно)
+- `MODERATION_GROUP_ID` - ID группы для модерации (обязательно)
+
+### AWS S3 (для продакшена)
+- `S3_BUCKET_NAME` - Имя S3 bucket
+- `AWS_ACCESS_KEY_ID` - AWS Access Key ID
+- `AWS_SECRET_ACCESS_KEY` - AWS Secret Access Key
+- `AWS_REGION` - AWS регион (по умолчанию us-east-1)
+- `S3_ENDPOINT_URL` - URL эндпоинта (для совместимых сервисов)
 
 ## Поддерживаемые Базы Данных
 
 - **PostgreSQL**: `postgresql://user:pass@host/db` → `postgresql+asyncpg://user:pass@host/db`
 - **MySQL**: `mysql://user:pass@host/db` → `mysql+aiomysql://user:pass@host/db`
 - **SQLite**: `sqlite:///./db.sqlite` → `sqlite+aiosqlite:///./db.sqlite`
+
+## Файловое Хранилище
+
+### Локальное хранилище (разработка)
+- Файлы сохраняются в папку `uploads/`
+- Подходит для разработки и тестирования
+
+### S3 хранилище (продакшн)
+- Файлы сохраняются в AWS S3
+- Поддерживает временные URL для прямого доступа
+- Автоматически выбирается при `ENVIRONMENT=production`
+- Fallback на локальное хранилище при ошибках конфигурации
 
 ## Пример Mapped Стиля
 
@@ -237,6 +257,18 @@ class User(Base, TimestampMixin):
    nano .env
    ```
 
+#### Продакшн (только бот)
+
+1. **Скопируйте пример переменных окружения для продакшена:**
+   ```bash
+   cp env.production.example .env
+   ```
+
+2. **Отредактируйте .env файл с продакшн настройками:**
+   ```bash
+   nano .env
+   ```
+
 3. **Запустите полную среду разработки (PostgreSQL + Redis + Бот):**
    ```bash
    docker-compose -f docker-compose-dev.yaml up -d
@@ -251,9 +283,18 @@ class User(Base, TimestampMixin):
 
 1. **Настройте внешнюю базу данных и переменные окружения:**
    ```bash
+   # Обязательные переменные
    export DATABASE_URL="postgresql+asyncpg://user:password@host:5432/dbname"
    export BOT_TOKEN="your_bot_token"
    export LOGFIRE_TOKEN="your_logfire_token"
+   export MODERATION_GROUP_ID="your_moderation_group_id"
+   
+   # AWS S3 Configuration (для хранения картинок)
+   export S3_BUCKET_NAME="your-s3-bucket-name"
+   export AWS_ACCESS_KEY_ID="your-aws-access-key-id"
+   export AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"
+   export AWS_REGION="us-east-1"
+   export S3_ENDPOINT_URL=""  # Оставьте пустым для AWS S3
    ```
 
 2. **Запустите только бота:**

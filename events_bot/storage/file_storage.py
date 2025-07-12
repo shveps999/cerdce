@@ -1,53 +1,9 @@
-from abc import ABC, abstractmethod
 from typing import Optional, BinaryIO
 import aiofiles
 import os
 import uuid
 from pathlib import Path
-
-
-class FileStorageInterface(ABC):
-    """Абстрактный интерфейс для файлового хранилища"""
-    
-    @abstractmethod
-    async def save_file(self, file_data: BinaryIO, file_extension: str) -> str:
-        """
-        Сохранить файл и вернуть его id
-        
-        Args:
-            file_data: Файловый объект с данными
-            file_extension: Расширение файла (например, '.jpg')
-            
-        Returns:
-            str: Уникальный id файла
-        """
-        pass
-    
-    @abstractmethod
-    async def get_file(self, file_id: str) -> Optional[BinaryIO]:
-        """
-        Получить файл по id
-        
-        Args:
-            file_id: Id файла
-            
-        Returns:
-            Optional[BinaryIO]: Файловый объект или None если файл не найден
-        """
-        pass
-    
-    @abstractmethod
-    async def delete_file(self, file_id: str) -> bool:
-        """
-        Удалить файл по id
-        
-        Args:
-            file_id: Id файла
-            
-        Returns:
-            bool: True если файл удален, False если файл не найден
-        """
-        pass
+from .interfaces import FileStorageInterface
 
 
 class LocalFileStorage(FileStorageInterface):
@@ -78,8 +34,8 @@ class LocalFileStorage(FileStorageInterface):
         # Ищем файл по id (проверяем все возможные расширения)
         for file_path in self.storage_path.glob(f"{file_id}.*"):
             if file_path.exists():
-                with open(file_path, 'rb') as f:
-                    return f.read()
+                async with aiofiles.open(file_path, 'rb') as f:
+                    return await f.read()
         return None
     
     async def delete_file(self, file_id: str) -> bool:
