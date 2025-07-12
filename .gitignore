@@ -216,4 +216,5 @@ htmlcov/
 
 # Logfire
 .logfire/
-logfire.json 
+logfire.json
+uploads/

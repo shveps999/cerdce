@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload
-from typing import List
-from ..models import Post, ModerationRecord, ModerationAction
+from typing import List, Optional
+from ..models import Post, ModerationRecord, ModerationAction, Category
 from ..models import User
 
 
@@ -11,14 +11,24 @@ class PostRepository:
 
     @staticmethod
     async def create_post(
-        db: AsyncSession, title: str, content: str, author_id: int, category_id: int, image_id: str = None
+        db: AsyncSession, title: str, content: str, author_id: int, category_ids: List[int], city: str = None, image_id: str = None
     ) -> Post:
         post = Post(
-            title=title, content=content, author_id=author_id, category_id=category_id, image_id=image_id
+            title=title, content=content, author_id=author_id, city=city, image_id=image_id
         )
         db.add(post)
         await db.commit()
         await db.refresh(post)
+        
+        # Добавляем категории к посту
+        categories_result = await db.execute(
+            select(Category).where(Category.id.in_(category_ids))
+        )
+        categories = categories_result.scalars().all()
+        post.categories = categories
+        await db.commit()
+        await db.refresh(post)
+        
         return post
 
     @staticmethod
@@ -26,7 +36,7 @@ class PostRepository:
         result = await db.execute(
             select(Post)
             .where(and_(Post.is_approved == False, Post.is_published == False))
-            .options(selectinload(Post.author), selectinload(Post.category))
+            .options(selectinload(Post.author), selectinload(Post.categories))
         )
         return result.scalars().all()
 
@@ -35,7 +45,7 @@ class PostRepository:
         result = await db.execute(
             select(Post)
             .where(Post.is_approved == True)
-            .options(selectinload(Post.author), selectinload(Post.category))
+            .options(selectinload(Post.author), selectinload(Post.categories))
         )
         return result.scalars().all()
 
@@ -45,8 +55,9 @@ class PostRepository:
     ) -> List[Post]:
         result = await db.execute(
             select(Post)
-            .where(and_(Post.category_id.in_(category_ids), Post.is_approved == True))
-            .options(selectinload(Post.author), selectinload(Post.category))
+            .join(Post.categories)
+            .where(and_(Post.categories.any(Category.id.in_(category_ids)), Post.is_approved == True))
+            .options(selectinload(Post.author), selectinload(Post.categories))
         )
         return result.scalars().all()
 
@@ -114,9 +125,29 @@ class PostRepository:
         result = await db.execute(
             select(Post)
             .where(Post.author_id == user_id)
-            .options(selectinload(Post.category))
+            .options(selectinload(Post.categories))
         )
         return result.scalars().all()
+
+    @staticmethod
+    async def get_post_by_id(db: AsyncSession, post_id: int) -> Optional[Post]:
+        result = await db.execute(
+            select(Post)
+            .where(Post.id == post_id)
+            .options(selectinload(Post.author), selectinload(Post.categories))
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def publish_post(db: AsyncSession, post_id: int) -> Post:
+        result = await db.execute(select(Post).where(Post.id == post_id))
+        post = result.scalar_one_or_none()
+        if post:
+            post.is_published = True
+            post.published_at = func.now()
+            await db.commit()
+            await db.refresh(post)
+        return post
 
     @staticmethod
     async def get_feed_posts(
@@ -138,14 +169,15 @@ class PostRepository:
         # Получаем посты по категориям пользователя, исключая его собственные
         result = await db.execute(
             select(Post)
+            .join(Post.categories)
             .where(
                 and_(
-                    Post.category_id.in_(category_ids),
+                    Post.categories.any(Category.id.in_(category_ids)),
                     Post.is_approved == True,
                     Post.is_published == True,
                 )
             )
-            .options(selectinload(Post.author), selectinload(Post.category))
+            .options(selectinload(Post.author), selectinload(Post.categories))
             .order_by(Post.published_at.desc())
             .limit(limit)
             .offset(offset)
@@ -170,9 +202,10 @@ class PostRepository:
         # Подсчитываем количество постов
         result = await db.execute(
             select(func.count(Post.id))
+            .join(Post.categories)
             .where(
                 and_(
-                    Post.category_id.in_(category_ids),
+                    Post.categories.any(Category.id.in_(category_ids)),
                     Post.is_approved == True,
                     Post.is_published == True,
                 )
