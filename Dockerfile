@@ -16,15 +16,21 @@ RUN uv sync --frozen
 # Копируем исходный код
 COPY . .
 
+VOLUME /app/uploads
+
 # Создаем пользователя для безопасности
 RUN useradd --create-home --shell /bin/bash app && \
     chown -R app:app /app
+
+RUN mkdir -p /app/uploads && \
+    chown -R app:app /app/uploads && \
+    chmod 755 /app/uploads
+    
 USER app
 
 # Устанавливаем переменные окружения по умолчанию
 ENV DATABASE_URL="sqlite+aiosqlite:///./events_bot.db"
 ENV PYTHONPATH="/app"
-VOLUME /app/uploads
 
 # Открываем порт (если понадобится для веб-хуков)
 EXPOSE 8080
