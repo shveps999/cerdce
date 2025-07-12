@@ -13,6 +13,13 @@ class PostRepository:
     async def create_post(
         db: AsyncSession, title: str, content: str, author_id: int, category_ids: List[int], city: str = None, image_id: str = None
     ) -> Post:
+        # Сначала получаем категории
+        categories_result = await db.execute(
+            select(Category).where(Category.id.in_(category_ids))
+        )
+        categories = categories_result.scalars().all()
+        
+        # Создаем пост
         post = Post(
             title=title, content=content, author_id=author_id, city=city, image_id=image_id
         )
@@ -20,12 +27,9 @@ class PostRepository:
         await db.commit()
         await db.refresh(post)
         
-        # Добавляем категории к посту
-        categories_result = await db.execute(
-            select(Category).where(Category.id.in_(category_ids))
-        )
-        categories = categories_result.scalars().all()
-        post.categories = categories
+        # Добавляем категории к посту в отдельной транзакции
+        for category in categories:
+            post.categories.append(category)
         await db.commit()
         await db.refresh(post)
         
