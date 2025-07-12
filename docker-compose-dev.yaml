@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: events_bot_postgres
+    environment:
+      POSTGRES_DB: events_bot
+      POSTGRES_USER: events_user
+      POSTGRES_PASSWORD: events_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U events_user -d events_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis для кэширования
+  redis:
+    image: redis:7-alpine
+    container_name: events_bot_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Telegram бот (разработка)
+  bot:
+    build: .
+    container_name: events_bot_dev
+    environment:
+      # Обязательные переменные
+      BOT_TOKEN: ${BOT_TOKEN}
+      MODERATION_GROUP_ID: ${MODERATION_GROUP_ID}
+      
+      # База данных (локальная)
+      DATABASE_URL: postgresql+asyncpg://events_user:events_password@postgres:5432/events_bot
+      
+      # Логирование
+      LOGFIRE_TOKEN: ${LOGFIRE_TOKEN}
+      
+      # Дополнительные настройки
+      ENVIRONMENT: development
+      DEBUG: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Монтируем локальные папки для разработки
+      - ./events_bot:/app/events_bot
+      - ./main.py:/app/main.py
+      - ~/.logfire:/home/app/.logfire
+      - ./.logfire:/app/.logfire
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  # Тестовая версия бота с SQLite
+  bot-test:
+    build: .
+    container_name: events_bot_test
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      MODERATION_GROUP_ID: ${MODERATION_GROUP_ID}
+      DATABASE_URL: "sqlite+aiosqlite:///.test1.db"
+      ENVIRONMENT: test
+      DEBUG: "true"
+    volumes:
+      - ./events_bot:/app/events_bot
+      - ./main.py:/app/main.py
+      - ~/.logfire:/home/app/.logfire
+      - ./.logfire:/app/.logfire
+      - uploads:/app/uploads:rw
+    restart: unless-stopped
+    profiles:
+      - test
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads:
+    driver: local

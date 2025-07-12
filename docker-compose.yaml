@@ -1,39 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL база данных
-  postgres:
-    image: postgres:15-alpine
-    container_name: events_bot_postgres
-    environment:
-      POSTGRES_DB: events_bot
-      POSTGRES_USER: events_user
-      POSTGRES_PASSWORD: events_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U events_user -d events_bot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis для кэширования (опционально)
-  redis:
-    image: redis:7-alpine
-    container_name: events_bot_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Telegram бот
+  # Telegram бот (продакшн)
   bot:
     build: .
     container_name: events_bot
@@ -41,50 +9,22 @@ services:
       # Обязательные переменные
       BOT_TOKEN: ${BOT_TOKEN}
       
-      # База данных
-      DATABASE_URL: postgresql+asyncpg://events_user:events_password@postgres:5432/events_bot
+      # База данных (внешняя)
+      DATABASE_URL: ${DATABASE_URL}
       
       # Логирование
       LOGFIRE_TOKEN: ${LOGFIRE_TOKEN}
+
+      # Группа для модерации
+      MODERATION_GROUP_ID: ${MODERATION_GROUP_ID}
       
       # Дополнительные настройки
-      ENVIRONMENT: development
-      DEBUG: "true"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      ENVIRONMENT: production
+      DEBUG: "false"
     volumes:
-      # Монтируем локальную папку для разработки
-      - ./events_bot:/app/events_bot
-      - ./main.py:/app/main.py
-      - ./uploads:/app/uploads
+      - uploads_data:/app/uploads:rw
     restart: unless-stopped
-    profiles:
-      - production
-
-  # Тестовая версия бота с SQLite (без сохранения данных)
-  bot-test:
-    build: .
-    container_name: events_bot_test
-    environment:
-      BOT_TOKEN: ${BOT_TOKEN}
-      MODERATION_GROUP_ID: ${MODERATION_GROUP_ID}
-      DATABASE_URL: "sqlite+aiosqlite:///.test1.db"
-      ENVIRONMENT: test
-      DEBUG: "true"
-    volumes:
-      - ./events_bot:/app/events_bot
-      - ./main.py:/app/main.py
-      - ~/.logfire:/home/app/.logfire
-      - ./.logfire:/app/.logfire
-    restart: unless-stopped
-    profiles:
-      - test
 
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
+  uploads_data:
     driver: local 

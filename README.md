@@ -225,6 +225,8 @@ class User(Base, TimestampMixin):
 
 ### Docker запуск
 
+#### Разработка (с локальной базой данных)
+
 1. **Скопируйте пример переменных окружения:**
    ```bash
    cp env.example .env
@@ -235,36 +237,50 @@ class User(Base, TimestampMixin):
    nano .env
    ```
 
-3. **Запустите тестовую версию с SQLite:**
+3. **Запустите полную среду разработки (PostgreSQL + Redis + Бот):**
    ```bash
-   podman-compose --profile test up bot-test
+   docker-compose -f docker-compose-dev.yaml up -d
    ```
 
-4. **Запустите продакшн версию с PostgreSQL:**
+4. **Запустите только тестовую версию с SQLite:**
    ```bash
-   podman-compose --profile production up
+   docker-compose -f docker-compose-dev.yaml --profile test up bot-test
+   ```
+
+#### Продакшн (только бот)
+
+1. **Настройте внешнюю базу данных и переменные окружения:**
+   ```bash
+   export DATABASE_URL="postgresql+asyncpg://user:password@host:5432/dbname"
+   export BOT_TOKEN="your_bot_token"
+   export LOGFIRE_TOKEN="your_logfire_token"
+   ```
+
+2. **Запустите только бота:**
+   ```bash
+   docker-compose up -d
    ```
 
 ### Docker/Podman команды
 
 - **Сборка образа:**
   ```bash
-  podman build -t events-bot .
+  docker build -t events-bot .
   ```
 
-- **Запуск только бота:**
+- **Запуск только бота (продакшн):**
   ```bash
-  podman run --env-file .env events-bot
+  docker run --env-file .env -v uploads_data:/app/uploads events-bot
   ```
 
 - **Просмотр логов:**
   ```bash
-  podman-compose logs -f bot
+  docker-compose logs -f bot
   ```
 
 - **Остановка:**
   ```bash
-  podman-compose down
+  docker-compose down
   ```
 
 ### Совместимость

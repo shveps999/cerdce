@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, insert
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from ..models import Post, ModerationRecord, ModerationAction, Category
+from ..models import Post, ModerationRecord, ModerationAction, Category, post_categories
 from ..models import User
 
 
@@ -13,23 +13,22 @@ class PostRepository:
     async def create_post(
         db: AsyncSession, title: str, content: str, author_id: int, category_ids: List[int], city: str = None, image_id: str = None
     ) -> Post:
-        # Сначала получаем категории
-        categories_result = await db.execute(
-            select(Category).where(Category.id.in_(category_ids))
-        )
-        categories = categories_result.scalars().all()
-        
         # Создаем пост
         post = Post(
             title=title, content=content, author_id=author_id, city=city, image_id=image_id
         )
         db.add(post)
         await db.commit()
-        await db.refresh(post)
         
         # Добавляем категории к посту в отдельной транзакции
-        for category in categories:
-            post.categories.append(category)
+        await db.execute(
+            insert(
+                post_categories
+            ).values(
+                post_id=post.id
+            ),
+            [{'category_id': category} for category in category_ids]
+        )
         await db.commit()
         await db.refresh(post)
         

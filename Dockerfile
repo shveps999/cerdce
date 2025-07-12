@@ -16,16 +16,11 @@ RUN uv sync --frozen
 # Копируем исходный код
 COPY . .
 
-VOLUME /app/uploads
 
 # Создаем пользователя для безопасности
 RUN useradd --create-home --shell /bin/bash app && \
     chown -R app:app /app
 
-RUN mkdir -p /app/uploads && \
-    chown -R app:app /app/uploads && \
-    chmod 755 /app/uploads
-    
 USER app
 
 # Устанавливаем переменные окружения по умолчанию
