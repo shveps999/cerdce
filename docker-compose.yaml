@@ -59,6 +59,7 @@ services:
       # Монтируем локальную папку для разработки
       - ./events_bot:/app/events_bot
       - ./main.py:/app/main.py
+      - ./uploads:/app/uploads
     restart: unless-stopped
     profiles:
       - production
@@ -69,7 +70,8 @@ services:
     container_name: events_bot_test
     environment:
       BOT_TOKEN: ${BOT_TOKEN}
-      DATABASE_URL: "sqlite+aiosqlite:///.test.db"
+      MODERATION_GROUP_ID: ${MODERATION_GROUP_ID}
+      DATABASE_URL: "sqlite+aiosqlite:///.test1.db"
       ENVIRONMENT: test
       DEBUG: "true"
     volumes:

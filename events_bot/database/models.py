@@ -49,6 +49,14 @@ user_categories = Table(
     Column("category_id", ForeignKey("categories.id"), primary_key=True),
 )
 
+# Таблица связи многие-ко-многим для постов и категорий
+post_categories = Table(
+    "post_categories",
+    Base.metadata,
+    Column("post_id", ForeignKey("posts.id"), primary_key=True),
+    Column("category_id", ForeignKey("categories.id"), primary_key=True),
+)
+
 
 class User(Base, TimestampMixin):
     """Модель пользователя Telegram"""
@@ -85,7 +93,9 @@ class Category(Base, TimestampMixin):
     users: Mapped[List[User]] = relationship(
         secondary=user_categories, back_populates="categories"
     )
-    posts: Mapped[List["Post"]] = relationship(back_populates="category")
+    posts: Mapped[List["Post"]] = relationship(
+        secondary=post_categories, back_populates="categories"
+    )
 
 
 class Post(Base, TimestampMixin):
@@ -97,16 +107,17 @@ class Post(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    category_id: Mapped[int] = mapped_column(
-        ForeignKey("categories.id"), nullable=False
-    )
+    city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    image_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
     published_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, nullable=True)
 
     # Связи
     author: Mapped[User] = relationship(back_populates="posts")
-    category: Mapped[Category] = relationship(back_populates="posts")
+    categories: Mapped[List[Category]] = relationship(
+        secondary=post_categories, back_populates="posts"
+    )
     moderation_records: Mapped[List["ModerationRecord"]] = relationship(
         back_populates="post"
     )
@@ -128,3 +139,22 @@ class ModerationRecord(Base, TimestampMixin):
     # Связи
     post: Mapped[Post] = relationship(back_populates="moderation_records")
     moderator: Mapped[User] = relationship()
+
+
+class Like(Base, TimestampMixin):
+    """Модель лайка пользователя на пост"""
+
+    __tablename__ = "likes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"), nullable=False)
+
+    # Связи
+    user: Mapped[User] = relationship()
+    post: Mapped[Post] = relationship()
+
+    # Уникальный индекс для предотвращения дублирования лайков
+    __table_args__ = (
+        # Один пользователь может поставить только один лайк на один пост
+    )

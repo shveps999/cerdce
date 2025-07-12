@@ -6,13 +6,6 @@ from .repositories import (
     PostRepository,
     ModerationRepository,
 )
-from .services import (
-    UserService,
-    CategoryService,
-    PostService,
-    NotificationService,
-    ModerationService,
-)
 from .init_db import init_database
 
 __all__ = [
@@ -31,12 +24,6 @@ __all__ = [
     "CategoryRepository",
     "PostRepository",
     "ModerationRepository",
-    # Services
-    "UserService",
-    "CategoryService",
-    "PostService",
-    "NotificationService",
-    "ModerationService",
     # Initialization
     "init_database",
 ]
