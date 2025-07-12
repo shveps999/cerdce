@@ -24,6 +24,7 @@ USER app
 # Устанавливаем переменные окружения по умолчанию
 ENV DATABASE_URL="sqlite+aiosqlite:///./events_bot.db"
 ENV PYTHONPATH="/app"
+VOLUME /app/uploads
 
 # Открываем порт (если понадобится для веб-хуков)
 EXPOSE 8080
