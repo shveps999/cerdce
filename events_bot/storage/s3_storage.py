@@ -82,7 +82,7 @@ class S3FileStorage(FileStorageInterface):
                     # Генерируем временный URL для файла
                     url = await self.get_file_url(file_id, expires_in=3600)
                     if url:
-                        logfire.info(f"File retrieved from S3: {key}")
+                        logfire.info("File retrieved from S3: {key}, url: {url}", key=key, url=url)
                         return InputMediaPhoto(media=URLInputFile(url))
                 except Exception:
                     continue
@@ -138,12 +138,12 @@ class S3FileStorage(FileStorageInterface):
                         await s3_client.head_object(Bucket=self.bucket_name, Key=key)
                         
                         # Генерируем временный URL
-                        url = s3_client.generate_presigned_url(
+                        url = await s3_client.generate_presigned_url(
                             'get_object',
                             Params={'Bucket': self.bucket_name, 'Key': key},
                             ExpiresIn=expires_in
                         )
-                        logfire.info(f"Generated presigned URL for: {key}")
+                        logfire.info("Generated presigned URL for: {key}, {url}", key=key, url=url)
                         return url
                     except ClientError as e:
                         if e.response['Error']['Code'] == 'NoSuchKey':

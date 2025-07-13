@@ -5,7 +5,7 @@ Telegram Events Bot - Основной файл приложения
 
 import logfire
 
-logfire.configure()
+logfire.configure(scrubbing=False)
 
 import asyncio
 import os
