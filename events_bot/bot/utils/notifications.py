@@ -24,12 +24,12 @@ async def send_post_notification(bot: Bot, post: Post, users: List[User], db) ->
             
             # Если у поста есть изображение, отправляем с фото
             if post.image_id:
-                image_path = file_storage.get_file_path(post.image_id)
-                if image_path and image_path.exists():
+                media_photo = await file_storage.get_media_photo(post.image_id)
+                if media_photo:
                     logfire.debug(f"Отправляем уведомление с изображением пользователю {user.id}")
                     await bot.send_photo(
                         chat_id=user.id,
-                        photo=FSInputFile(str(image_path)),
+                        photo=media_photo.media,
                         caption=notification_text
                     )
                 else:

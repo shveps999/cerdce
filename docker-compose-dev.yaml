@@ -1,16 +1,24 @@
 version: '3.8'
 
+networks:
+  events_bot_network:
+    driver: bridge
+    name: events_bot_network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
 services:
   # PostgreSQL база данных
   postgres:
-    image: postgres:15-alpine
+    image: docker.io/postgres:alpine
     container_name: events_bot_postgres
     environment:
       POSTGRES_DB: events_bot
       POSTGRES_USER: events_user
       POSTGRES_PASSWORD: events_password
     ports:
-      - "5432:5432"
+      - "5433:5432"  # Изменен порт хоста на 5433
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,13 +26,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - events_bot_network
 
   # Redis для кэширования
   redis:
-    image: redis:7-alpine
+    image: docker.io/redis:alpine
     container_name: events_bot_redis
     ports:
-      - "6379:6379"
+      - "6380:6379"  # Изменен порт хоста на 6380
     volumes:
       - redis_data:/data
     healthcheck:
@@ -32,6 +42,36 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - events_bot_network
+
+  # LocalStack для эмуляции AWS сервисов
+  localstack:
+    image: docker.io/localstack/localstack:latest
+    container_name: events_bot_localstack
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - DEBUG=1
+      - DATA_DIR=/var/lib/localstack
+      - PERSISTENCE=1
+      - HOSTNAME_EXTERNAL=localstack
+      - LOCALSTACK_HOST=0.0.0.0
+      - EDGE_PORT=4566
+    ports:
+      - "4566:4566"  # LocalStack API
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./aws:/etc/localstack/init/ready.d
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c '</dev/tcp/localhost/4566' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - events_bot_network
 
   # Telegram бот (разработка)
   bot:
@@ -45,6 +85,14 @@ services:
       # База данных (локальная)
       DATABASE_URL: postgresql+asyncpg://events_user:events_password@postgres:5432/events_bot
       
+      # S3 (LocalStack)
+      S3_BUCKET_NAME: events-bot-uploads
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      S3_ENDPOINT_URL: http://localstack:4566
+      AWS_ENDPOINT_URL: http://localstack:4566
+      
       # Логирование
       LOGFIRE_TOKEN: ${LOGFIRE_TOKEN}
       
@@ -56,6 +104,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      localstack:
+        condition: service_started
     volumes:
       # Монтируем локальные папки для разработки
       - ./events_bot:/app/events_bot
@@ -64,6 +114,8 @@ services:
       - ./.logfire:/app/.logfire
       - ./uploads:/app/uploads
     restart: unless-stopped
+    networks:
+      - events_bot_network
 
   # Тестовая версия бота с SQLite
   bot-test:
@@ -84,11 +136,15 @@ services:
     restart: unless-stopped
     profiles:
       - test
+    networks:
+      - events_bot_network
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  localstack_data:
     driver: local
   uploads:
     driver: local

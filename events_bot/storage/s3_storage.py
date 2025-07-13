@@ -1,9 +1,10 @@
 import os
 import uuid
-from typing import Optional, BinaryIO
+from typing import Optional
 from pathlib import Path
 import aioboto3
 import boto3
+from aiogram.types import InputMediaPhoto, URLInputFile
 from botocore.exceptions import ClientError, NoCredentialsError
 from .interfaces import FileStorageInterface
 import logfire
@@ -71,31 +72,20 @@ class S3FileStorage(FileStorageInterface):
             logfire.error(f"Error saving file to S3: {e}")
             raise
     
-    async def get_file(self, file_id: str) -> Optional[bytes]:
-        """Получить файл из S3 по id"""
+    async def get_media_photo(self, file_id: str) -> Optional[InputMediaPhoto]:
+        """Получить файл как InputMediaPhoto для отправки в Telegram"""
         try:
-            session = aioboto3.Session()
-            async with session.client(
-                's3',
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.region_name,
-                endpoint_url=self.endpoint_url
-            ) as s3_client:
-                # Пробуем найти файл с разными расширениями
-                for extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
-                    key = f"{file_id}.{extension}"
-                    try:
-                        response = await s3_client.get_object(Bucket=self.bucket_name, Key=key)
-                        async with response['Body'] as stream:
-                            data = await stream.read()
-                            logfire.info(f"File retrieved from S3: {key}")
-                            return data
-                    except ClientError as e:
-                        if e.response['Error']['Code'] == 'NoSuchKey':
-                            continue
-                        else:
-                            raise
+            # Пробуем найти файл с разными расширениями
+            for extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
+                key = f"{file_id}.{extension}"
+                try:
+                    # Генерируем временный URL для файла
+                    url = await self.get_file_url(file_id, expires_in=3600)
+                    if url:
+                        logfire.info(f"File retrieved from S3: {key}")
+                        return InputMediaPhoto(media=URLInputFile(url))
+                except Exception:
+                    continue
                             
             logfire.warning(f"File not found in S3: {file_id}")
             return None
@@ -135,33 +125,38 @@ class S3FileStorage(FileStorageInterface):
             logfire.error(f"Error deleting file from S3: {e}")
             return False
     
-    def get_file_url(self, file_id: str, expires_in: int = 3600) -> Optional[str]:
+    async def get_file_url(self, file_id: str, expires_in: int = 3600) -> Optional[str]:
         """Получить URL файла для прямого доступа (с временной ссылкой)"""
         try:
-            session = boto3.Session(
+            session = aioboto3.Session()
+            async with session.client(
+                's3',
                 aws_access_key_id=self.aws_access_key_id,
                 aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.region_name
-            )
-            s3_client = session.client('s3', endpoint_url=self.endpoint_url)
-            
-            # Пробуем найти файл с разными расширениями
-            for extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
-                key = f"{file_id}.{extension}"
-                try:
-                    url = s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': self.bucket_name, 'Key': key},
-                        ExpiresIn=expires_in
-                    )
-                    logfire.info(f"Generated presigned URL for: {key}")
-                    return url
-                except ClientError as e:
-                    if e.response['Error']['Code'] == 'NoSuchKey':
-                        continue
-                    else:
-                        raise
+                region_name=self.region_name,
+                endpoint_url=self.endpoint_url
+            ) as s3_client:
+                # Пробуем найти файл с разными расширениями
+                for extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
+                    key = f"{file_id}.{extension}"
+                    try:
+                        # Проверяем существование файла
+                        await s3_client.head_object(Bucket=self.bucket_name, Key=key)
                         
+                        # Генерируем временный URL
+                        url = s3_client.generate_presigned_url(
+                            'get_object',
+                            Params={'Bucket': self.bucket_name, 'Key': key},
+                            ExpiresIn=expires_in
+                        )
+                        logfire.info(f"Generated presigned URL for: {key}")
+                        return url
+                    except ClientError as e:
+                        if e.response['Error']['Code'] == 'NoSuchKey':
+                            continue
+                        else:
+                            raise
+                            
             logfire.warning(f"File not found for URL generation: {file_id}")
             return None
             

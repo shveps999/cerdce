@@ -23,12 +23,19 @@ async def test_storage():
     file_id = await local_storage.save_file(test_data, file_extension)
     print(f"✅ Файл сохранен с ID: {file_id}")
     
-    # Получаем файл
-    retrieved_data = await local_storage.get_file(file_id)
-    if retrieved_data == test_data:
-        print("✅ Файл успешно получен")
+    # Получаем файл как InputMediaPhoto
+    media_photo = await local_storage.get_media_photo(file_id)
+    if media_photo:
+        print("✅ Файл успешно получен как InputMediaPhoto")
     else:
         print("❌ Ошибка при получении файла")
+    
+    # Генерируем URL
+    url = await local_storage.get_file_url(file_id)
+    if url:
+        print(f"✅ URL сгенерирован: {url}")
+    else:
+        print("❌ Ошибка при генерации URL")
     
     # Удаляем файл
     if await local_storage.delete_file(file_id):
@@ -50,15 +57,15 @@ async def test_storage():
                 file_id = await s3_storage.save_file(test_data, file_extension)
                 print(f"✅ Файл сохранен в S3 с ID: {file_id}")
                 
-                # Получаем файл
-                retrieved_data = await s3_storage.get_file(file_id)
-                if retrieved_data == test_data:
-                    print("✅ Файл успешно получен из S3")
+                # Получаем файл как InputMediaPhoto
+                media_photo = await s3_storage.get_media_photo(file_id)
+                if media_photo:
+                    print("✅ Файл успешно получен из S3 как InputMediaPhoto")
                 else:
                     print("❌ Ошибка при получении файла из S3")
                 
                 # Генерируем URL
-                url = s3_storage.get_file_url(file_id)
+                url = await s3_storage.get_file_url(file_id)
                 if url:
                     print(f"✅ URL сгенерирован: {url[:50]}...")
                 else:

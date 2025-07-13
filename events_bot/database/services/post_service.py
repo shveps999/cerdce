@@ -63,19 +63,19 @@ class PostService:
             # Если у поста есть изображение, отправляем с фото
             if post.image_id:
                 logfire.info(f"Пост содержит изображение: {post.image_id}")
-                image_path = file_storage.get_file_path(post.image_id)
-                if image_path and image_path.exists():
-                    logfire.info(f"Изображение найдено: {image_path}")
+                media_photo = await file_storage.get_media_photo(post.image_id)
+                if media_photo:
+                    logfire.info("Изображение найдено")
                     await bot.send_photo(
                         chat_id=moderation_group_id,
-                        photo=FSInputFile(str(image_path)),
+                        photo=media_photo.media,
                         caption=moderation_text,
                         reply_markup=moderation_keyboard
                     )
                     logfire.info("Пост с изображением отправлен на модерацию")
                     return
                 else:
-                    logfire.warning(f"Изображение не найдено: {image_path}")
+                    logfire.warning("Изображение не найдено")
             
             # Если нет изображения, отправляем только текст
             logfire.info("Отправляем пост без изображения")

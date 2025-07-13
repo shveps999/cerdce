@@ -180,12 +180,19 @@ events_bot/
 - `BOT_TOKEN` - Токен Telegram бота (обязательно)
 - `MODERATION_GROUP_ID` - ID группы для модерации (обязательно)
 
-### AWS S3 (для продакшена)
+### AWS S3 (при наличии данных авторизации)
 - `S3_BUCKET_NAME` - Имя S3 bucket
 - `AWS_ACCESS_KEY_ID` - AWS Access Key ID
 - `AWS_SECRET_ACCESS_KEY` - AWS Secret Access Key
 - `AWS_REGION` - AWS регион (по умолчанию us-east-1)
 - `S3_ENDPOINT_URL` - URL эндпоинта (для совместимых сервисов)
+
+### LocalStack (для разработки)
+- `S3_BUCKET_NAME` - Имя S3 bucket (по умолчанию events-bot-uploads)
+- `AWS_ACCESS_KEY_ID` - Тестовый ключ (по умолчанию test)
+- `AWS_SECRET_ACCESS_KEY` - Тестовый секрет (по умолчанию test)
+- `AWS_REGION` - Регион (по умолчанию us-east-1)
+- `S3_ENDPOINT_URL` - URL LocalStack (по умолчанию http://localstack:4566)
 
 ## Поддерживаемые Базы Данных
 
@@ -199,11 +206,17 @@ events_bot/
 - Файлы сохраняются в папку `uploads/`
 - Подходит для разработки и тестирования
 
-### S3 хранилище (продакшн)
+### S3 хранилище (при наличии данных авторизации)
 - Файлы сохраняются в AWS S3
 - Поддерживает временные URL для прямого доступа
-- Автоматически выбирается при `ENVIRONMENT=production`
+- Автоматически выбирается при наличии переменных `S3_BUCKET_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 - Fallback на локальное хранилище при ошибках конфигурации
+
+### LocalStack (разработка)
+- Локальная эмуляция AWS S3 для разработки
+- Полная совместимость с AWS S3 API
+- Не требует реальных AWS учетных данных
+- Автоматически запускается в docker-compose-dev.yaml
 
 ## Пример Mapped Стиля
 
@@ -269,7 +282,7 @@ class User(Base, TimestampMixin):
    nano .env
    ```
 
-3. **Запустите полную среду разработки (PostgreSQL + Redis + Бот):**
+3. **Запустите полную среду разработки (PostgreSQL + Redis + LocalStack + Бот):**
    ```bash
    docker-compose -f docker-compose-dev.yaml up -d
    ```
@@ -278,6 +291,21 @@ class User(Base, TimestampMixin):
    ```bash
    docker-compose -f docker-compose-dev.yaml --profile test up bot-test
    ```
+
+**Примечание:** В development окружении используются порты:
+- PostgreSQL: 5433 (вместо стандартного 5432)
+- Redis: 6380 (вместо стандартного 6379)
+- LocalStack: 4566
+
+**Автоматическая инициализация S3:**
+- Bucket `events-bot-uploads` создается автоматически при запуске LocalStack
+- CORS настраивается автоматически
+- Скрипты находятся в папке `aws/`
+
+**Проверка S3 bucket:**
+```bash
+docker exec events_bot_localstack ./aws/check-buckets.sh
+```
 
 #### Продакшн (только бот)
 
@@ -289,7 +317,7 @@ class User(Base, TimestampMixin):
    export LOGFIRE_TOKEN="your_logfire_token"
    export MODERATION_GROUP_ID="your_moderation_group_id"
    
-   # AWS S3 Configuration (для хранения картинок)
+   # AWS S3 Configuration (опционально, для хранения картинок)
    export S3_BUCKET_NAME="your-s3-bucket-name"
    export AWS_ACCESS_KEY_ID="your-aws-access-key-id"
    export AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"

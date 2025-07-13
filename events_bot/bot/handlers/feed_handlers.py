@@ -98,17 +98,17 @@ async def show_feed_page_cmd(message: Message, page: int, db):
     logfire.info(f"Показываем пост {post.id} пользователю {message.from_user.id}")
     # Если у поста есть изображение, отправляем с фото
     if post.image_id:
-        image_path = file_storage.get_file_path(post.image_id)
-        if image_path and image_path.exists():
-            logfire.info(f"Пост {post.id} содержит изображение: {image_path}")
+        media_photo = await file_storage.get_media_photo(post.image_id)
+        if media_photo:
+            logfire.info(f"Пост {post.id} содержит изображение")
             await message.answer_photo(
-                photo=FSInputFile(str(image_path)),
+                photo=media_photo.media,
                 caption=feed_text,
                 reply_markup=get_feed_keyboard(page, total_pages, post.id, is_liked, likes_count)
             )
             return
         else:
-            logfire.warning(f"Изображение для поста {post.id} не найдено: {image_path}")
+            logfire.warning(f"Изображение для поста {post.id} не найдено")
     # Если нет изображения, отправляем только текст
     await message.answer(
         feed_text,
@@ -150,19 +150,19 @@ async def show_feed_page(callback: CallbackQuery, page: int, db):
     logfire.info(f"Показываем пост {post.id} пользователю {callback.from_user.id}")
     # Если у поста есть изображение, отправляем с фото
     if post.image_id:
-        image_path = file_storage.get_file_path(post.image_id)
-        if image_path and image_path.exists():
-            logfire.info(f"Пост {post.id} содержит изображение: {image_path}")
+        media_photo = await file_storage.get_media_photo(post.image_id)
+        if media_photo:
+            logfire.info(f"Пост {post.id} содержит изображение")
             await callback.message.edit_media(
                 media=InputMediaPhoto(
-                    media=FSInputFile(str(image_path)),
+                    media=media_photo.media,
                     caption=feed_text
                 ),
                 reply_markup=get_feed_keyboard(page, total_pages, post.id, is_liked, likes_count)
             )
             return
         else:
-            logfire.warning(f"Изображение для поста {post.id} не найдено: {image_path}")
+            logfire.warning(f"Изображение для поста {post.id} не найдено")
     # Если нет изображения, отправляем только текст
     await callback.message.edit_text(
         feed_text,

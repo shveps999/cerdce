@@ -1,8 +1,9 @@
-from typing import Optional, BinaryIO
+from typing import Optional
 import aiofiles
 import os
 import uuid
 from pathlib import Path
+from aiogram.types import InputMediaPhoto, FSInputFile
 from .interfaces import FileStorageInterface
 
 
@@ -29,13 +30,21 @@ class LocalFileStorage(FileStorageInterface):
         
         return file_id
     
-    async def get_file(self, file_id: str) -> Optional[BinaryIO]:
-        """Получить файл по id"""
+    async def get_media_photo(self, file_id: str) -> Optional[InputMediaPhoto]:
+        """Получить файл как InputMediaPhoto для отправки в Telegram"""
         # Ищем файл по id (проверяем все возможные расширения)
         for file_path in self.storage_path.glob(f"{file_id}.*"):
             if file_path.exists():
-                async with aiofiles.open(file_path, 'rb') as f:
-                    return await f.read()
+                return InputMediaPhoto(media=FSInputFile(str(file_path)))
+        return None
+    
+    async def get_file_url(self, file_id: str, expires_in: int = 3600) -> Optional[str]:
+        """Получить URL файла для прямого доступа (локальный путь)"""
+        # Ищем файл по id (проверяем все возможные расширения)
+        for file_path in self.storage_path.glob(f"{file_id}.*"):
+            if file_path.exists():
+                # Возвращаем абсолютный путь к файлу
+                return str(file_path.absolute())
         return None
     
     async def delete_file(self, file_id: str) -> bool:
@@ -47,9 +56,4 @@ class LocalFileStorage(FileStorageInterface):
                 return True
         return False
     
-    def get_file_path(self, file_id: str) -> Optional[Path]:
-        """Получить путь к файлу по id (для внутреннего использования)"""
-        for file_path in self.storage_path.glob(f"{file_id}.*"):
-            if file_path.exists():
-                return file_path
-        return None 
+ 
