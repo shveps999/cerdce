@@ -28,4 +28,4 @@ services:
       # Дополнительные настройки
       ENVIRONMENT: production
       DEBUG: "false"
-    restart: never
+    restart: no
