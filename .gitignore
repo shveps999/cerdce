@@ -218,3 +218,6 @@ htmlcov/
 .logfire/
 logfire.json
 uploads/
+
+# UV
+uv.lock

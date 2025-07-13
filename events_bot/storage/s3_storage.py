@@ -2,12 +2,12 @@ import os
 import uuid
 from typing import Optional
 from pathlib import Path
-import aioboto3
-import boto3
+from aioboto3 import Session
 from aiogram.types import InputMediaPhoto, URLInputFile
 from botocore.exceptions import ClientError, NoCredentialsError
 from .interfaces import FileStorageInterface
 import logfire
+from types_aiobotocore_s3 import Client
 
 
 class S3FileStorage(FileStorageInterface):
@@ -22,7 +22,6 @@ class S3FileStorage(FileStorageInterface):
         endpoint_url: str = None
     ):
         """
-        Args:
             bucket_name: Имя S3 bucket
             aws_access_key_id: AWS Access Key ID
             aws_secret_access_key: AWS Secret Access Key
@@ -42,6 +41,11 @@ class S3FileStorage(FileStorageInterface):
             raise ValueError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are required")
         
         logfire.info(f"S3 storage initialized with bucket: {self.bucket_name}, region: {self.region_name}")
+        self.session: Session = Session(
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+            region_name=self.region_name
+        )
     
     async def save_file(self, file_data: bytes, file_extension: str) -> str:
         """Сохранить файл в S3"""
@@ -50,12 +54,8 @@ class S3FileStorage(FileStorageInterface):
         key = f"{file_id}.{file_extension}"
         
         try:
-            session = aioboto3.Session()
-            async with session.client(
+            async with self.session.client(
                 's3',
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.region_name,
                 endpoint_url=self.endpoint_url
             ) as s3_client:
                 await s3_client.put_object(
@@ -82,7 +82,7 @@ class S3FileStorage(FileStorageInterface):
                     # Генерируем временный URL для файла
                     url = await self.get_file_url(file_id, expires_in=3600)
                     if url:
-                        logfire.info(f"File retrieved from S3: {key}")
+                        logfire.info("File retrieved from S3: {key}, url: {url}", key=key, url=url)
                         return InputMediaPhoto(media=URLInputFile(url))
                 except Exception:
                     continue
@@ -97,14 +97,11 @@ class S3FileStorage(FileStorageInterface):
     async def delete_file(self, file_id: str) -> bool:
         """Удалить файл из S3 по id"""
         try:
-            session = aioboto3.Session()
-            async with session.client(
+            async with self.session.client(
                 's3',
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.region_name,
                 endpoint_url=self.endpoint_url
             ) as s3_client:
+                s3_client: Client
                 # Пробуем удалить файл с разными расширениями
                 for extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
                     key = f"{file_id}.{extension}"
@@ -128,14 +125,11 @@ class S3FileStorage(FileStorageInterface):
     async def get_file_url(self, file_id: str, expires_in: int = 3600) -> Optional[str]:
         """Получить URL файла для прямого доступа (с временной ссылкой)"""
         try:
-            session = aioboto3.Session()
-            async with session.client(
+            async with self.session.client(
                 's3',
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.region_name,
                 endpoint_url=self.endpoint_url
             ) as s3_client:
+                s3_client: Client
                 # Пробуем найти файл с разными расширениями
                 for extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
                     key = f"{file_id}.{extension}"
@@ -144,12 +138,12 @@ class S3FileStorage(FileStorageInterface):
                         await s3_client.head_object(Bucket=self.bucket_name, Key=key)
                         
                         # Генерируем временный URL
-                        url = s3_client.generate_presigned_url(
+                        url = await s3_client.generate_presigned_url(
                             'get_object',
                             Params={'Bucket': self.bucket_name, 'Key': key},
                             ExpiresIn=expires_in
                         )
-                        logfire.info(f"Generated presigned URL for: {key}")
+                        logfire.info("Generated presigned URL for: {key}, {url}", key=key, url=url)
                         return url
                     except ClientError as e:
                         if e.response['Error']['Code'] == 'NoSuchKey':
@@ -178,12 +172,8 @@ class S3FileStorage(FileStorageInterface):
     async def test_connection(self) -> bool:
         """Тестировать подключение к S3"""
         try:
-            session = aioboto3.Session()
-            async with session.client(
+            async with self.session.client(
                 's3',
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.region_name,
                 endpoint_url=self.endpoint_url
             ) as s3_client:
                 await s3_client.head_bucket(Bucket=self.bucket_name)

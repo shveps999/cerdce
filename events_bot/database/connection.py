@@ -20,6 +20,8 @@ def get_database_url():
         else:
             return database_url
 
+        
+already_instrumented = False
 
 def create_async_engine_and_session():
     """Создает асинхронный движок базы данных и сессию"""
@@ -28,7 +30,10 @@ def create_async_engine_and_session():
     session_maker = async_sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )
-    instrument_sqlalchemy(engine)
+    global already_instrumented
+    if not already_instrumented:
+        instrument_sqlalchemy(engine)
+        already_instrumented = True
     return engine, session_maker
 
 
