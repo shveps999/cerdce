@@ -56,7 +56,8 @@ class S3FileStorage(FileStorageInterface):
         try:
             async with self.session.client(
                 's3',
-                endpoint_url=self.endpoint_url
+                endpoint_url=self.endpoint_url,
+                use_ssl=False
             ) as s3_client:
                 await s3_client.put_object(
                     Bucket=self.bucket_name,
@@ -99,7 +100,8 @@ class S3FileStorage(FileStorageInterface):
         try:
             async with self.session.client(
                 's3',
-                endpoint_url=self.endpoint_url
+                endpoint_url=self.endpoint_url,
+                use_ssl=False
             ) as s3_client:
                 s3_client: Client
                 # Пробуем удалить файл с разными расширениями
@@ -127,7 +129,8 @@ class S3FileStorage(FileStorageInterface):
         try:
             async with self.session.client(
                 's3',
-                endpoint_url=self.endpoint_url
+                endpoint_url=self.endpoint_url,
+                use_ssl=False
             ) as s3_client:
                 s3_client: Client
                 # Пробуем найти файл с разными расширениями
