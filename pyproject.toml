@@ -15,6 +15,7 @@ dependencies = [
     "logfire>=0.0.1",
     "aiofiles>=23.0.0",
     "aioboto3>=15.0.0",
+    "types-aioboto3[s3]>=15.0.0",
 ]
 
 [dependency-groups]

@@ -7,6 +7,7 @@ from aiogram.types import InputMediaPhoto, URLInputFile
 from botocore.exceptions import ClientError, NoCredentialsError
 from .interfaces import FileStorageInterface
 import logfire
+from types_aiobotocore_s3 import Client
 
 
 class S3FileStorage(FileStorageInterface):
@@ -43,8 +44,7 @@ class S3FileStorage(FileStorageInterface):
         self.session: Session = Session(
             aws_access_key_id=self.aws_access_key_id,
             aws_secret_access_key=self.aws_secret_access_key,
-            region_name=self.region_name,
-            endpoint_url=self.endpoint_url
+            region_name=self.region_name
         )
     
     async def save_file(self, file_data: bytes, file_extension: str) -> str:
@@ -55,7 +55,8 @@ class S3FileStorage(FileStorageInterface):
         
         try:
             async with self.session.client(
-                's3'
+                's3',
+                endpoint_url=self.endpoint_url
             ) as s3_client:
                 await s3_client.put_object(
                     Bucket=self.bucket_name,
@@ -97,8 +98,10 @@ class S3FileStorage(FileStorageInterface):
         """Удалить файл из S3 по id"""
         try:
             async with self.session.client(
-                's3'
+                's3',
+                endpoint_url=self.endpoint_url
             ) as s3_client:
+                s3_client: Client
                 # Пробуем удалить файл с разными расширениями
                 for extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
                     key = f"{file_id}.{extension}"
@@ -123,8 +126,10 @@ class S3FileStorage(FileStorageInterface):
         """Получить URL файла для прямого доступа (с временной ссылкой)"""
         try:
             async with self.session.client(
-                's3'
+                's3',
+                endpoint_url=self.endpoint_url
             ) as s3_client:
+                s3_client: Client
                 # Пробуем найти файл с разными расширениями
                 for extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
                     key = f"{file_id}.{extension}"
@@ -133,7 +138,7 @@ class S3FileStorage(FileStorageInterface):
                         await s3_client.head_object(Bucket=self.bucket_name, Key=key)
                         
                         # Генерируем временный URL
-                        url = s3_client.get_presigned_url(
+                        url = s3_client.generate_presigned_url(
                             'get_object',
                             Params={'Bucket': self.bucket_name, 'Key': key},
                             ExpiresIn=expires_in
@@ -167,12 +172,8 @@ class S3FileStorage(FileStorageInterface):
     async def test_connection(self) -> bool:
         """Тестировать подключение к S3"""
         try:
-            session = aioboto3.Session()
-            async with session.client(
+            async with self.session.client(
                 's3',
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
-                region_name=self.region_name,
                 endpoint_url=self.endpoint_url
             ) as s3_client:
                 await s3_client.head_bucket(Bucket=self.bucket_name)
