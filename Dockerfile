@@ -8,10 +8,10 @@ WORKDIR /app
 RUN pip install uv
 
 # Копируем файлы зависимостей
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 
 # Устанавливаем зависимости
-RUN uv sync --frozen
+RUN uv sync
 
 # Копируем исходный код
 COPY . .
@@ -22,10 +22,6 @@ RUN useradd --create-home --shell /bin/bash app && \
     chown -R app:app /app
 
 USER app
-
-# Устанавливаем переменные окружения по умолчанию
-ENV DATABASE_URL="sqlite+aiosqlite:///./events_bot.db"
-ENV PYTHONPATH="/app"
 
 # Открываем порт (если понадобится для веб-хуков)
 EXPOSE 8080
