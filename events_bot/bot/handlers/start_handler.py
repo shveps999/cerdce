@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from events_bot.database.services import UserService
 from events_bot.bot.states import UserStates
 from events_bot.bot.keyboards import get_city_keyboard, get_main_keyboard
+from events_bot.bot.messages import StartMessages
 
 router = Router()
 
@@ -28,17 +29,12 @@ async def cmd_start(message: Message, state: FSMContext, db):
     # Проверяем, есть ли у пользователя город
     if not user.city:
         await message.answer(
-            "👋 Добро пожаловать в Events Bot!\n\n"
-            "Для начала работы выберите ваш город:",
+            StartMessages.WELCOME,
             reply_markup=get_city_keyboard(),
         )
         await state.set_state(UserStates.waiting_for_city)
     else:
-        welcome_text = f"👋 С возвращением, {user.first_name or user.username or 'пользователь'}!\n\n"
-        welcome_text += "Выберите действие"
-        
         await message.answer(
-            welcome_text,
+            StartMessages.ALREADY_REGISTERED,
             reply_markup=get_main_keyboard(),
-            parse_mode="Markdown"
         )

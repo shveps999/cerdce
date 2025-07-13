@@ -4,6 +4,7 @@ from events_bot.database.models import User, Post
 from events_bot.database.services import NotificationService
 from events_bot.storage import file_storage
 from aiogram.types import FSInputFile, InputMediaPhoto
+from events_bot.bot.messages import NotificationMessages
 import logfire
 
 

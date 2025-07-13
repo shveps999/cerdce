@@ -5,6 +5,7 @@ from events_bot.database.services import PostService, LikeService
 from events_bot.bot.keyboards.main_keyboard import get_main_keyboard
 from events_bot.bot.keyboards.feed_keyboard import get_feed_keyboard
 from events_bot.storage import file_storage
+from events_bot.bot.messages import FeedMessages, CommonMessages
 import logfire
 
 router = Router()
@@ -59,7 +60,7 @@ async def handle_feed_navigation(callback: CallbackQuery, db):
 async def return_to_main_menu(callback: CallbackQuery):
     """Возврат в главное меню"""
     await callback.message.edit_text(
-        "Выберите действие:", reply_markup=get_main_keyboard()
+        CommonMessages.BACK_TO_MAIN, reply_markup=get_main_keyboard()
     )
     await callback.answer()
 
@@ -74,10 +75,7 @@ async def show_feed_page_cmd(message: Message, page: int, db):
     if not posts:
         logfire.info(f"Пользователь {message.from_user.id} — в ленте нет постов")
         await message.answer(
-            "📭 В ленте пока нет постов по вашим категориям.\n\n"
-            "Попробуйте:\n"
-            "• Выбрать другие категории\n"
-            "• Создать пост самому",
+            FeedMessages.FEED_EMPTY_CATEGORY,
             reply_markup=get_main_keyboard()
         )
         return
@@ -126,10 +124,7 @@ async def show_feed_page(callback: CallbackQuery, page: int, db):
     if not posts:
         logfire.info(f"Пользователь {callback.from_user.id} — в ленте нет постов")
         await callback.message.edit_text(
-            "📭 В ленте пока нет постов по вашим категориям.\n\n"
-            "Попробуйте:\n"
-            "• Выбрать другие категории\n"
-            "• Создать пост самому",
+            FeedMessages.FEED_EMPTY_CATEGORY,
             reply_markup=get_main_keyboard()
         )
         return
@@ -191,7 +186,7 @@ def format_post_for_feed(post, current_position: int, total_posts: int, likes_co
     published_str = published_at.strftime('%d.%m.%Y %H:%M') if published_at else ''
     
     return (
-        f"📰 Лента постов\n\n"
+        f"{FeedMessages.FEED_HEADER}\n\n"
         f"📝 {post.title}\n\n"
         f"{post.content}\n\n"
         f"👤 Автор: {author_name}\n"
@@ -215,8 +210,8 @@ async def handle_post_heart(callback: CallbackQuery, post_id: int, db, data):
         action_text = "добавлено" if result["action"] == "added" else "удалено"
         likes_count = result["likes_count"]
         
-        response_text = f"Сердечко {action_text}!\n\n"
-        response_text += f"💖 Всего сердечек: {likes_count}"
+        response_text = FeedMessages.LIKE_ADDED if result["action"] == "added" else FeedMessages.LIKE_REMOVED
+        response_text += f"\n\n💖 Всего сердечек: {likes_count}"
         
         await callback.answer(response_text, show_alert=True)
         
@@ -244,4 +239,4 @@ async def handle_post_heart(callback: CallbackQuery, post_id: int, db, data):
         
     except Exception as e:
         logfire.error(f"Ошибка при сохранении сердечка посту {post_id}: {e}")
-        await callback.answer("❌ Ошибка при сохранении сердечка", show_alert=True) 
+        await callback.answer(FeedMessages.LIKE_ERROR, show_alert=True) 

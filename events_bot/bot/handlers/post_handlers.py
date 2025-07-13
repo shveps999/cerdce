@@ -11,6 +11,7 @@ from events_bot.bot.keyboards import (
     get_city_keyboard,
 )
 from events_bot.storage import file_storage
+from events_bot.bot.messages import PostMessages, CommonMessages
 from loguru import logger
 
 router = Router()
@@ -29,7 +30,7 @@ async def cmd_create_post(message: Message, state: FSMContext, db):
     
     # Сначала предлагаем выбрать город
     await message.answer(
-        "🏙️ Выберите город для поста:",
+        PostMessages.CREATE_POST_START,
         reply_markup=get_city_keyboard(for_post=True)
     )
     await state.set_state(PostStates.waiting_for_city_selection)
@@ -41,7 +42,7 @@ async def cmd_cancel_post(message: Message, state: FSMContext, db):
     logfire.info(f"Пользователь {message.from_user.id} отменил создание поста")
     await state.clear()
     await message.answer(
-        "❌ Создание поста отменено.",
+        CommonMessages.ACTION_CANCELLED,
         reply_markup=get_main_keyboard()
     )
 
@@ -54,7 +55,7 @@ async def start_create_post(callback: CallbackQuery, state: FSMContext, db):
     
     # Сначала предлагаем выбрать город
     await callback.message.edit_text(
-        "🏙️ Выберите город для поста:",
+        PostMessages.CREATE_POST_START,
         reply_markup=get_city_keyboard(for_post=True)
     )
     await state.set_state(PostStates.waiting_for_city_selection)
@@ -66,7 +67,7 @@ async def cancel_post_creation(callback: CallbackQuery, state: FSMContext, db):
     """Отмена создания поста"""
     await state.clear()
     await callback.message.edit_text(
-        "❌ Создание поста отменено.",
+        CommonMessages.ACTION_CANCELLED,
         reply_markup=get_main_keyboard()
     )
     await callback.answer()
@@ -84,7 +85,7 @@ async def process_post_city_selection(callback: CallbackQuery, state: FSMContext
     all_categories = await CategoryService.get_all_categories(db)
     
     await callback.message.edit_text(
-        f"🏙️ Город {city} выбран!\n\n📂 Теперь выберите категории для поста:",
+        PostMessages.SELECT_POST_CATEGORIES,
         reply_markup=get_category_selection_keyboard(all_categories, for_post=True)
     )
     await state.set_state(PostStates.waiting_for_category_selection)
@@ -107,7 +108,7 @@ async def process_post_category_selection(callback: CallbackQuery, state: FSMCon
     # Получаем все категории для выбора
     all_categories = await CategoryService.get_all_categories(db)
     await callback.message.edit_text(
-        "📂 Выберите одну или несколько категорий для поста (можно выбрать несколько):",
+        PostMessages.SELECT_POST_CATEGORIES,
         reply_markup=get_category_selection_keyboard(all_categories, category_ids, for_post=True)
     )
     await callback.answer()
@@ -119,12 +120,12 @@ async def confirm_post_categories(callback: CallbackQuery, state: FSMContext, db
     data = await state.get_data()
     category_ids = data.get("category_ids", [])
     if not category_ids:
-        await callback.answer("Выберите хотя бы одну категорию", show_alert=True)
+        await callback.answer(PostMessages.NO_CATEGORIES_SELECTED, show_alert=True)
         return
     await state.update_data(category_ids=category_ids)
     logfire.info(f"Категории подтверждены для пользователя {callback.from_user.id}: {category_ids}")
     await callback.message.edit_text(
-        f"📝 Создание поста в категориях: {len(category_ids)} выбрано\n\nВведите заголовок поста:"
+        PostMessages.ENTER_TITLE
     )
     await state.set_state(PostStates.waiting_for_title)
     logfire.info(f"Состояние изменено на waiting_for_title для пользователя {callback.from_user.id}")
@@ -137,12 +138,12 @@ async def process_post_title(message: Message, state: FSMContext, db):
     logfire.info(f"Получен заголовок поста от пользователя {message.from_user.id}: {message.text}")
     
     if len(message.text) > 100:
-        await message.answer("❌ Заголовок слишком длинный. Максимум 100 символов.")
+        await message.answer(PostMessages.TITLE_TOO_LONG)
         return
 
     await state.update_data(title=message.text)
     logfire.info(f"Заголовок сохранен в состоянии: {message.text}")
-    await message.answer("📄 Введите содержание поста:")
+    await message.answer(PostMessages.ENTER_CONTENT)
     await state.set_state(PostStates.waiting_for_content)
     logfire.info(f"Состояние изменено на waiting_for_content для пользователя {message.from_user.id}")
 
@@ -151,13 +152,11 @@ async def process_post_title(message: Message, state: FSMContext, db):
 async def process_post_content(message: Message, state: FSMContext, db):
     """Обработка содержания поста"""
     if len(message.text) > 2000:
-        await message.answer("❌ Содержание слишком длинное. Максимум 2000 символов.")
+        await message.answer(PostMessages.CONTENT_TOO_LONG)
         return
 
     await state.update_data(content=message.text)
-    await message.answer(
-        "🖼️ Отправьте изображение для поста (или нажмите /skip для пропуска):"
-    )
+    await message.answer(PostMessages.ADD_PHOTO)
     await state.set_state(PostStates.waiting_for_image)
 
 
@@ -169,7 +168,7 @@ async def process_post_image(message: Message, state: FSMContext, db):
         return
 
     if not message.photo:
-        await message.answer("❌ Пожалуйста, отправьте изображение или нажмите /skip")
+        await message.answer(PostMessages.NO_PHOTO_SENT)
         return
 
     # Получаем самое большое изображение
@@ -199,7 +198,7 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
 
     if not all([title, content, category_ids, post_city]):
         await message.answer(
-            "❌ Ошибка: не все данные поста заполнены. Попробуйте создать пост заново.",
+            PostMessages.POST_CREATION_ERROR,
             reply_markup=get_main_keyboard(),
         )
         await state.clear()
@@ -219,13 +218,13 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
 
     if post:
         await message.answer(
-            f"✅ Пост создан и отправлен на модерацию в городе {post_city} в {len(category_ids)} категориях!",
+            PostMessages.POST_CREATED_SUCCESSFULLY,
             reply_markup=get_main_keyboard(),
         )
         await state.clear()
     else:
         await message.answer(
-            "❌ Ошибка при создании поста. Попробуйте еще раз.",
+            PostMessages.POST_CREATION_ERROR,
             reply_markup=get_main_keyboard(),
         )
         await state.clear()

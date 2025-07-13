@@ -16,6 +16,7 @@ from events_bot.bot.keyboards import (
     get_moderation_queue_keyboard,
     get_main_keyboard,
 )
+from events_bot.bot.messages import ModerationMessages, CommonMessages
 
 router = Router()
 
@@ -34,13 +35,13 @@ async def cmd_moderation(message: Message, db):
     if not pending_posts:
         logfire.info("Очередь модерации пуста")
         await message.answer(
-            "Нет постов на модерации.",
+            ModerationMessages.MODERATION_QUEUE_EMPTY,
             reply_markup=get_main_keyboard(),
         )
         return
 
     logfire.info(f"Найдено {len(pending_posts)} постов на модерации")
-    response = "Посты на модерации:\n\n"
+    response = ModerationMessages.MODERATION_QUEUE_HEADER
     for post in pending_posts:
         await db.refresh(post, attribute_names=["author", "categories"])
         category_names = [cat.name for cat in post.categories] if post.categories else ['Неизвестно']
@@ -66,13 +67,13 @@ async def show_moderation_queue_callback(callback: CallbackQuery, db):
     if not pending_posts:
         logfire.info("Очередь модерации пуста")
         await callback.message.edit_text(
-            "Нет постов на модерации.",
+            ModerationMessages.MODERATION_QUEUE_EMPTY,
             reply_markup=get_moderation_queue_keyboard(),
         )
         return
 
     logfire.info(f"Найдено {len(pending_posts)} постов на модерации")
-    response = "Посты на модерации:\n\n"
+    response = ModerationMessages.MODERATION_QUEUE_HEADER
     for post in pending_posts:
         await db.refresh(post, attribute_names=["author", "categories"])
         category_names = [cat.name for cat in post.categories] if post.categories else ['Неизвестно']
@@ -99,14 +100,14 @@ async def refresh_moderation_queue(callback: CallbackQuery, db):
     if not pending_posts:
         logfire.info("Очередь модерации пуста при обновлении")
         await callback.message.edit_text(
-            "Нет постов на модерации.",
+            ModerationMessages.MODERATION_QUEUE_EMPTY,
             reply_markup=get_moderation_queue_keyboard(),
         )
-        await callback.answer("Очередь обновлена")
+        await callback.answer(ModerationMessages.MODERATION_QUEUE_UPDATED)
         return
 
     logfire.info(f"Обновлено: найдено {len(pending_posts)} постов на модерации")
-    response = "Посты на модерации:\n\n"
+    response = ModerationMessages.MODERATION_QUEUE_HEADER
     for post in pending_posts:
         await db.refresh(post, attribute_names=["author", "categories"])
         category_names = [cat.name for cat in post.categories] if post.categories else ['Неизвестно']
@@ -121,7 +122,7 @@ async def refresh_moderation_queue(callback: CallbackQuery, db):
     await callback.message.edit_text(
         response, reply_markup=get_moderation_queue_keyboard()
     )
-    await callback.answer("Очередь обновлена")
+    await callback.answer(ModerationMessages.MODERATION_QUEUE_UPDATED)
 
 
 @router.callback_query(F.data.startswith("moderate_"))
@@ -148,30 +149,30 @@ async def process_moderation_action(callback: CallbackQuery, db):
             logfire.info(f"Отправляем уведомления {len(users_to_notify)} пользователям")
             await send_post_notification(callback.bot, post, users_to_notify, db)
 
-            await callback.answer("✅ Пост одобрен и опубликован!")
+            await callback.answer(ModerationMessages.POST_APPROVED)
             await callback.message.delete()
         else:
             logfire.error(f"Ошибка при одобрении поста {post_id}")
-            await callback.answer("❌ Ошибка при одобрении поста")
+            await callback.answer(ModerationMessages.POST_APPROVAL_ERROR)
 
     elif action == "reject":
         post = await PostService.reject_post(db, post_id, callback.from_user.id)
         if post:
             await db.refresh(post, attribute_names=["author", "categories"])
             logfire.info(f"Пост {post_id} отклонен модератором {callback.from_user.id}")
-            await callback.answer("❌ Пост отклонен!")
+            await callback.answer(ModerationMessages.POST_REJECTED)
             await callback.message.delete()
         else:
             logfire.error(f"Ошибка при отклонении поста {post_id}")
-            await callback.answer("❌ Ошибка при отклонении поста")
+            await callback.answer(ModerationMessages.POST_REJECTION_ERROR)
 
     elif action == "changes":
         post = await PostService.request_changes(db, post_id, callback.from_user.id)
         if post:
             await db.refresh(post, attribute_names=["author", "categories"])
             logfire.info(f"Для поста {post_id} запрошены изменения модератором {callback.from_user.id}")
-            await callback.answer("📝 Запрошены изменения в посте!")
+            await callback.answer(ModerationMessages.POST_CHANGES_REQUESTED)
             await callback.message.delete()
         else:
             logfire.error(f"Ошибка при запросе изменений для поста {post_id}")
-            await callback.answer("❌ Ошибка при запросе изменений")
+            await callback.answer(ModerationMessages.POST_CHANGES_ERROR)

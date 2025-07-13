@@ -8,6 +8,7 @@ from events_bot.bot.keyboards import (
     get_category_selection_keyboard,
     get_city_keyboard,
 )
+from events_bot.bot.messages import UserMessages, CommonMessages
 
 router = Router()
 
@@ -24,11 +25,11 @@ async def cmd_my_posts(message: Message, db):
 
     if not posts:
         await message.answer(
-            "📭 У вас пока нет постов.", reply_markup=get_main_keyboard()
+            UserMessages.MY_POSTS_EMPTY, reply_markup=get_main_keyboard()
         )
         return
 
-    response = "📊 Ваши посты:\n\n"
+    response = UserMessages.MY_POSTS_HEADER
     for post in posts:
         # Загружаем связанные объекты
         await db.refresh(post, attribute_names=["categories"])
@@ -49,7 +50,7 @@ async def cmd_my_posts(message: Message, db):
 async def cmd_change_city(message: Message, state: FSMContext):
     """Обработчик команды /change_city"""
     await message.answer(
-        "Выберите новый город:", reply_markup=get_city_keyboard()
+        UserMessages.SELECT_CATEGORIES, reply_markup=get_city_keyboard()
     )
     await state.set_state(UserStates.waiting_for_city)
 
@@ -64,7 +65,7 @@ async def cmd_change_category(message: Message, state: FSMContext, db):
     selected_ids = [cat.id for cat in user_categories]
 
     await message.answer(
-        "Выберите категории для публикации постов:",
+        UserMessages.SELECT_CATEGORIES,
         reply_markup=get_category_selection_keyboard(categories, selected_ids),
     )
     await state.set_state(UserStates.waiting_for_categories)
@@ -73,33 +74,8 @@ async def cmd_change_category(message: Message, state: FSMContext, db):
 @router.message(F.text == "/help")
 async def cmd_help(message: Message):
     """Обработчик команды /help"""
-    help_text = """
-ℹ️ **Справка по боту**
-
-🤖 **Основные функции:**
-• /create_post - создание нового поста в выбранной категории
-• /my_posts - просмотр ваших опубликованных постов
-• /feed - просмотр ленты постов
-• /moderation - доступ к модерации (для модераторов)
-• /change_city - смена города для получения уведомлений
-• /change_category - смена категории для публикации постов
-
-📋 **Как использовать:**
-1. Выберите город проживания
-2. Выберите категорию для публикации постов
-3. Создавайте посты в выбранной категории
-4. Получайте уведомления о новых постах в вашем городе
-
-📝 **Создание поста:**
-• Заголовок: до 100 символов
-• Содержание: до 2000 символов
-• Посты проходят модерацию перед публикацией
-
-❓ **Поддержка:** Обратитесь к администратору бота
-"""
-
     await message.answer(
-        help_text, reply_markup=get_main_keyboard(), parse_mode="Markdown"
+        CommonMessages.HELP_GENERAL, reply_markup=get_main_keyboard(), parse_mode="Markdown"
     )
 
 
@@ -120,7 +96,7 @@ async def process_city_selection_callback(callback: CallbackQuery, state: FSMCon
     await db.commit()
     categories = await CategoryService.get_all_categories(db)
     await callback.message.edit_text(
-        f"🏙️ Город {city} выбран!\n\nТеперь выберите категории для публикации постов:",
+        UserMessages.SELECT_CATEGORIES,
         reply_markup=get_category_selection_keyboard(categories),
     )
     await state.set_state(UserStates.waiting_for_categories)
@@ -131,7 +107,7 @@ async def process_city_selection_callback(callback: CallbackQuery, state: FSMCon
 async def change_city_callback(callback: CallbackQuery, state: FSMContext):
     """Изменение города через инлайн-кнопку"""
     await callback.message.edit_text(
-        "Выберите новый город:", reply_markup=get_city_keyboard()
+        UserMessages.SELECT_CATEGORIES, reply_markup=get_city_keyboard()
     )
     await state.set_state(UserStates.waiting_for_city)
     await callback.answer()
@@ -147,7 +123,7 @@ async def change_category_callback(callback: CallbackQuery, state: FSMContext, d
     selected_ids = [cat.id for cat in user_categories]
 
     await callback.message.edit_text(
-        "Выберите категории для публикации постов:",
+        UserMessages.SELECT_CATEGORIES,
         reply_markup=get_category_selection_keyboard(categories, selected_ids),
     )
     await state.set_state(UserStates.waiting_for_categories)
@@ -161,11 +137,11 @@ async def show_my_posts_callback(callback: CallbackQuery, db):
 
     if not posts:
         await callback.message.edit_text(
-            "📭 У вас пока нет постов.", reply_markup=get_main_keyboard()
+            UserMessages.MY_POSTS_EMPTY, reply_markup=get_main_keyboard()
         )
         return
 
-    response = "📊 Ваши посты:\n\n"
+    response = UserMessages.MY_POSTS_HEADER
     for post in posts:
         # Загружаем связанные объекты
         await db.refresh(post, attribute_names=["categories"])
@@ -186,30 +162,7 @@ async def show_my_posts_callback(callback: CallbackQuery, db):
 @router.callback_query(F.data == "help")
 async def show_help_callback(callback: CallbackQuery):
     """Показать справку через инлайн-кнопку"""
-    help_text = """
-ℹ️ **Справка по боту**
-
-🤖 **Основные функции:**
-• 📝 Создать пост - создание нового поста в выбранной категории
-• 📊 Мои посты - просмотр ваших опубликованных постов
-• 🏙️ Изменить город - смена города для получения уведомлений
-• 📂 Изменить категорию - смена категории для публикации постов
-
-📋 **Как использовать:**
-1. Выберите город проживания
-2. Выберите категорию для публикации постов
-3. Создавайте посты в выбранной категории
-4. Получайте уведомления о новых постах в вашем городе
-
-📝 **Создание поста:**
-• Заголовок: до 200 символов
-• Содержание: до 4000 символов
-• Посты проходят модерацию перед публикацией
-
-❓ **Поддержка:** Обратитесь к администратору бота
-"""
-
     await callback.message.edit_text(
-        help_text, reply_markup=get_main_keyboard(), parse_mode="Markdown"
+        CommonMessages.HELP_GENERAL, reply_markup=get_main_keyboard(), parse_mode="Markdown"
     )
     await callback.answer()

@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from events_bot.database.services import UserService, CategoryService
 from events_bot.bot.states import UserStates
 from events_bot.bot.keyboards import get_category_selection_keyboard, get_main_keyboard
+from events_bot.bot.messages import CallbackMessages, UserMessages, CommonMessages
 
 router = Router()
 
@@ -47,7 +48,7 @@ async def confirm_categories_selection(callback: CallbackQuery, state: FSMContex
     selected_ids = data.get("selected_categories", [])
 
     if not selected_ids:
-        await callback.answer("❌ Выберите хотя бы одну категорию!")
+        await callback.answer(CallbackMessages.SELECT_AT_LEAST_ONE_CATEGORY)
         return
 
     # Сохраняем выбранные категории пользователю
@@ -59,11 +60,10 @@ async def confirm_categories_selection(callback: CallbackQuery, state: FSMContex
     category_names = ", ".join([cat.name for cat in selected_categories])
 
     await callback.message.edit_text(
-        f"✅ Выбраны категории: {category_names}\n\n"
-        "Теперь вы можете создавать посты в этих категориях."
+        UserMessages.CATEGORIES_SAVED
     )
 
     await callback.message.edit_text(
-        "Выберите действие:", reply_markup=get_main_keyboard()
+        CommonMessages.BACK_TO_MAIN, reply_markup=get_main_keyboard()
     )
     await state.clear()
