@@ -34,7 +34,7 @@ async def cmd_start(message: Message, state: FSMContext, db):
         )
         await state.set_state(UserStates.waiting_for_city)
     else:
-        welcome_text = f"👋 С возвращением, {user.first_name or user.username or 'пользователь'}!\n\n"
+        welcome_text = f"👋 С возвращением в Сердце, {user.first_name or user.username or 'пользователь'}!\n\n"
         welcome_text += "Выберите действие"
         
         await message.answer(
