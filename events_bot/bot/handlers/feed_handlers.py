@@ -194,10 +194,8 @@ def format_post_for_feed(post, current_position: int, total_posts: int, likes_co
         f"📰 Лента постов\n\n"
         f"📝 {post.title}\n\n"
         f"{post.content}\n\n"
-        f"👤 Автор: {author_name}\n"
-        f"🏙️ Город: {post_city}\n"
+        f"🏙️ Университет: {post_city}\n"
         f"📂 Категории: {category_str}\n"
-        f"💖 Сердечек: {likes_count}\n"
         f"📅 {published_str}\n\n"
         f"📊 {current_position} из {total_posts} постов"
     )
@@ -216,7 +214,7 @@ async def handle_post_heart(callback: CallbackQuery, post_id: int, db, data):
         likes_count = result["likes_count"]
         
         response_text = f"Сердечко {action_text}!\n\n"
-        response_text += f"💖 Всего сердечек: {likes_count}"
+        response_text += f"❤️ Всего сердец: {likes_count}"
         
         await callback.answer(response_text, show_alert=True)
         
