@@ -37,8 +37,8 @@ async def cmd_my_posts(message: Message, db):
         category_str = ', '.join(category_names)
         post_city = getattr(post, 'city', 'Не указан')
         response += f"📝 {post.title}\n"
-        response += f"🏙️ {post_city}\n"
-        response += f"📂 {category_str}\n"
+        response += f"🎓 {post_city}\n"
+        response += f"🌟 {category_str}\n"
         response += f"📅 {post.created_at.strftime('%d.%m.%Y %H:%M')}\n"
         response += f"📊 {status}\n\n"
 
@@ -174,8 +174,8 @@ async def show_my_posts_callback(callback: CallbackQuery, db):
         category_str = ', '.join(category_names)
         post_city = getattr(post, 'city', 'Не указан')
         response += f"📝 {post.title}\n"
-        response += f"🏙️ {post_city}\n"
-        response += f"📂 {category_str}\n"
+        response += f"🎓 {post_city}\n"
+        response += f"🌟 {category_str}\n"
         response += f"📅 {post.created_at.strftime('%d.%m.%Y %H:%M')}\n"
         response += f"📊 {status}\n\n"
 
