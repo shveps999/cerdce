@@ -5,7 +5,7 @@ from aiogram.types import InlineKeyboardMarkup
 def get_main_keyboard() -> InlineKeyboardMarkup:
     """Главная инлайн-клавиатура с основными действиями (выравнивание по левому краю)"""
     builder = InlineKeyboardBuilder()
-     builder.button(text="\u200B📝 Создать пост", callback_data="create_post")
+    builder.button(text="\u200B📝 Создать пост", callback_data="create_post")
     builder.button(text="\u200B📊 Мои посты", callback_data="my_posts")
     builder.button(text="\u200B📰 Лента", callback_data="feed")
     builder.button(text="\u200B🏙️ Изменить город", callback_data="change_city")
