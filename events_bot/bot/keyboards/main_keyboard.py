@@ -12,4 +12,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="📂 Изменить категорию", callback_data="change_category")
     builder.button(text="ℹ️ Помощь", callback_data="help")
     builder.adjust(1)
+
+    builder.adjust(1, repeat=True)
+    
     return builder.as_markup()
