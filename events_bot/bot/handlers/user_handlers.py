@@ -54,6 +54,15 @@ async def cmd_change_city(message: Message, state: FSMContext):
     await state.set_state(UserStates.waiting_for_city)
 
 
+@router.message(F.text == "/main_menu")
+async def cmd_main_menu(message: Message):
+    """Обработчик команды /main_menu для возврата в главное меню"""
+    await message.answer(
+        "🏠 Главное меню",
+        reply_markup=get_main_keyboard()
+    )
+
+
 @router.message(F.text == "/change_category")
 async def cmd_change_category(message: Message, state: FSMContext, db):
     """Обработчик команды /change_category"""
