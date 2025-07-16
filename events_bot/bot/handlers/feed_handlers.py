@@ -9,7 +9,7 @@ import logfire
 
 router = Router()
 
-POSTS_PER_PAGE = 4  # Показываем по одному посту на странице
+POSTS_PER_PAGE = 1  # Показываем по одному посту на странице
 
 def register_feed_handlers(dp: Router):
     """Регистрация обработчиков ленты"""
