@@ -10,7 +10,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="📊 Мои события", callback_data="my_posts")
     builder.button(text="🏙️ Изменить город", callback_data="change_city")
     builder.button(text="📂 Изменить интересы", callback_data="change_category")
-    builder.button(text="🔍 Модерация", callback_data="moderation")
+    builder.button(text="❤︎ Модерация", callback_data="moderation")
     builder.button(text="ℹ️ Помощь", callback_data="help")
     
     # Ключевое изменение - выравниваем все кнопки по левому краю
