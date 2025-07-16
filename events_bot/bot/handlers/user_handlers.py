@@ -58,7 +58,7 @@ async def cmd_change_city(message: Message, state: FSMContext):
 async def cmd_main_menu(message: Message):
     """Обработчик команды /main_menu для возврата в главное меню"""
     await message.answer(
-        "🏠 Главное меню",
+        "Главное меню",
         reply_markup=get_main_keyboard()
     )
 
