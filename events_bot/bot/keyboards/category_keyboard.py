@@ -32,7 +32,7 @@ def get_category_selection_keyboard(
     
     for category in categories:
         is_selected = category.id in selected_ids
-        text = f"{'✅' if is_selected else '⬜️'} {category.name}"
+        text = f"{'❤️' if is_selected else ''} {category.name}"
         builder.button(text=text, callback_data=f"{prefix}{category.id}")
     builder.adjust(2)
     
