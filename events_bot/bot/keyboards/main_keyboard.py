@@ -12,7 +12,4 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="🌟 Изменить интересы", callback_data="change_category")
     builder.button(text="💬 Помощь", callback_data="help")
     
-    # Ключевое изменение - выравниваем все кнопки по левому краю
-    builder.adjust(1, repeat=True)
-    
     return builder.as_markup()
