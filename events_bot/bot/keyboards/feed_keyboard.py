@@ -17,7 +17,7 @@ def get_feed_keyboard(current_page: int, total_pages: int, post_id: int, is_like
     builder.button(text=heart_text, callback_data=f"feed_heart_{post_id}_{current_page}_{total_pages}")
     
     # Кнопка возврата в главное меню
-    builder.button(text="🏠 Главное меню", callback_data="main_menu")
+    builder.button(text="💡 Главное меню", callback_data="main_menu")
     
     # Настраиваем расположение кнопок
     builder.adjust(2)
