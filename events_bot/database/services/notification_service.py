@@ -1,7 +1,7 @@
 from typing import List
 import logfire
 from ..repositories import UserRepository
-from ..models import User, Post
+from ..models import User, Post, CategoryNames
 
 
 class NotificationService:
@@ -31,10 +31,14 @@ class NotificationService:
     @staticmethod
     def format_post_notification(post: Post) -> str:
         """Форматировать уведомление о посте"""
-        # Безопасно получаем данные, избегая ленивой загрузки
+        # Получаем текстовые названия категорий через CategoryNames
         category_names = []
         if hasattr(post, 'categories') and post.categories is not None:
-            category_names = [getattr(cat, 'name', 'Неизвестно') for cat in post.categories]
+            category_names = [
+                CategoryNames.get_text_name(cat.id) 
+                for cat in post.categories
+                if getattr(cat, 'id', None) is not None
+            ]
         
         category_str = ', '.join(category_names) if category_names else 'Неизвестно'
         
@@ -48,9 +52,9 @@ class NotificationService:
         published_str = published_at.strftime('%d.%m.%Y %H:%M') if published_at else ''
         
         return (
-            f"Новый пост в категориях '{category_str}'\n\n"
-            f"{post.title}\n\n"
-            f"{post.content}\n\n"
-            f"Автор: {author_name}\n"
-            f"{published_str}"
+            f"Новый пост в категориях: {category_str}\n\n"
+            f"🏷 {post.title}\n\n"
+            f"📝 {post.content}\n\n"
+            f"👤 Автор: {author_name}\n"
+            f"⏰ {published_str}"
         )
