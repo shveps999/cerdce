@@ -161,6 +161,53 @@ async def process_post_content(message: Message, state: FSMContext, db):
     await state.set_state(PostStates.waiting_for_image)
 
 
+@router.callback_query(F.data == "likes")
+async def show_liked_posts(callback: CallbackQuery, db: AsyncSession):
+    # Получаем лайкнутые посты пользователя
+    liked_posts = await db.execute(
+        select(Post)
+        .join(UserLike, UserLike.post_id == Post.id)
+        .where(UserLike.user_id == callback.from_user.id)
+        .order_by(UserLike.created_at.desc())
+    )
+    posts = liked_posts.scalars().all()
+    
+    if not posts:
+        await callback.message.answer("Вы еще не лайкнули ни одного поста ❤️")
+        return
+
+    
+    # Формируем сообщение
+    response = "❤️ Ваши лайкнутые посты:\n\n"
+    for post in posts:
+        response += f"📌 {post.title}\n"
+        response += f"📅 {post.created_at.strftime('%d.%m.%Y')}\n"
+        response += f"🔗 /post_{post.id}\n\n"
+    
+    await callback.message.answer(response, reply_markup=get_main_keyboard())
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("like_"))
+async def like_post(callback: CallbackQuery, db: AsyncSession):
+    post_id = int(callback.data.split("_")[1])
+    
+    # Проверяем, не лайкал ли уже
+    existing_like = await db.get(UserLike, (callback.from_user.id, post_id))
+    if existing_like:
+        await callback.answer("Вы уже лайкали этот пост")
+        return
+    
+    # Сохраняем лайк
+    db.add(UserLike(
+        user_id=callback.from_user.id,
+        post_id=post_id
+    ))
+    await db.commit()
+    
+    await callback.answer("❤️ Пост добавлен в избранное")
+
+
 @router.message(PostStates.waiting_for_image)
 async def process_post_image(message: Message, state: FSMContext, db):
     """Обработка изображения поста"""
