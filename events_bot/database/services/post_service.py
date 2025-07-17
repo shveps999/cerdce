@@ -122,27 +122,44 @@ class PostService:
         return await PostRepository.get_feed_posts_count(db, user_id)
 
     @staticmethod
-    async def get_liked_posts_with_details(db: AsyncSession, user_id: int):
-    async with db.begin():
-        stmt = (
-            select(Post, Like.created_at)
-            .join(Like, Like.post_id == Post.id)
-            .options(selectinload(Post.categories))
-            .where(Like.user_id == user_id)
-            .execution_options(populate_existing=True)
-        )
-        result = await db.execute(stmt)
-        return [post for post, _ in result.all()]
+    async def get_liked_posts_with_details(db: AsyncSession, user_id: int) -> List[Post]:
+        try:
+            stmt = (
+                select(Post, Like.created_at.label('like_date'))
+                .join(Like, Like.post_id == Post.id)
+                .options(
+                    selectinload(Post.categories),
+                    selectinload(Post.author)
+                )
+                .where(Like.user_id == user_id)
+                .execution_options(populate_existing=True)
+                .order_by(Like.created_at.desc())
+            )
+            
+            result = await db.execute(stmt)
+            posts = []
+            
+            for post, like_date in result.all():
+                post.like_date = like_date
+                posts.append(post)
+            
+            return posts
+            
+        except Exception as e:
+            logfire.error(f"Ошибка получения избранного: {str(e)}", exc_info=True)
+            raise
 
     @staticmethod
     async def remove_like(db: AsyncSession, user_id: int, post_id: int) -> bool:
         try:
-            result = await db.execute(
+            stmt = (
                 select(Like)
                 .where(Like.user_id == user_id)
                 .where(Like.post_id == post_id)
                 .limit(1)
             )
+            
+            result = await db.execute(stmt)
             like = result.scalar_one_or_none()
             
             if like:
@@ -150,7 +167,8 @@ class PostService:
                 await db.commit()
                 return True
             return False
+            
         except Exception as e:
-            logfire.error(f"Error removing like: {e}")
+            logfire.error(f"Ошибка удаления лайка: {str(e)}", exc_info=True)
             await db.rollback()
             return False
