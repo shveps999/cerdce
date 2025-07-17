@@ -8,12 +8,12 @@ from sqlalchemy import (
     func,
     Column,
     Integer,
-    Enum,
+    Enum as SQLAlchemyEnum,
     BigInteger,
 )
 from sqlalchemy.orm import DeclarativeBase, mapped_column, relationship
 from sqlalchemy.orm import Mapped
-from typing import List, Optional
+from typing import List, Optional, Dict
 import enum
 
 
@@ -58,6 +58,38 @@ post_categories = Table(
 )
 
 
+class CategoryNames:
+    """Класс для работы с текстовыми названиями категорий"""
+    
+    # Словарь соответствия ID категорий и их текстовых названий (без эмодзи)
+    TEXT_NAMES: Dict[int, str] = {
+        1: "Вечеринки",
+        2: "Спорт",
+        3: "Культура",
+        4: "Наука",
+        5: "Бизнес",
+        6: "Медицина",
+        7: "Образование",
+        8: "Путешествия",
+        9: "Кулинария",
+        10: "Театр",
+        11: "Настолки",
+        12: "Музыка",
+        13: "Кино",
+        15: "Игры"
+    }
+
+    @classmethod
+    def get_text_name(cls, category_id: int) -> str:
+        """Возвращает текстовое название категории по ID"""
+        return cls.TEXT_NAMES.get(category_id, "Неизвестная категория")
+
+    @classmethod
+    def get_all_categories(cls) -> Dict[int, str]:
+        """Возвращает словарь всех категорий {id: название}"""
+        return cls.TEXT_NAMES.copy()
+
+
 class User(Base, TimestampMixin):
     """Модель пользователя Telegram"""
 
@@ -97,6 +129,11 @@ class Category(Base, TimestampMixin):
         secondary=post_categories, back_populates="categories"
     )
 
+    @property
+    def text_name(self) -> str:
+        """Возвращает текстовое название категории (без эмодзи) для уведомлений"""
+        return CategoryNames.get_text_name(self.id)
+
 
 class Post(Base, TimestampMixin):
     """Модель поста"""
@@ -122,6 +159,10 @@ class Post(Base, TimestampMixin):
         back_populates="post"
     )
 
+    def get_category_text_names(self) -> List[str]:
+        """Возвращает список текстовых названий категорий поста"""
+        return [category.text_name for category in self.categories]
+
 
 class ModerationRecord(Base, TimestampMixin):
     """Модель записи модерации"""
@@ -132,7 +173,7 @@ class ModerationRecord(Base, TimestampMixin):
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"), nullable=False)
     moderator_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     action: Mapped[ModerationAction] = mapped_column(
-        Enum(ModerationAction), nullable=False
+        SQLAlchemyEnum(ModerationAction), nullable=False
     )
     comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
