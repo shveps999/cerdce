@@ -8,6 +8,7 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     # Добавляем неразрывный пробел после эмодзи для лучшего отображения
     builder.button(text="📮\u00A0Смотреть подборку", callback_data="feed")
     builder.button(text="✏️\u00A0Создать событие", callback_data="create_post") 
+    builder.button(text="❤️\u00A0Лайкнутые", callback_data="liked_posts")  # Новая кнопка
     builder.button(text="🎓\u00A0Изменить университет", callback_data="change_city")
     builder.button(text="🌟\u00A0Изменить категории", callback_data="change_category")
     builder.button(text="💬\u00A0Помощь", callback_data="help")
