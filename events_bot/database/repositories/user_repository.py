@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, delete, insert
+from sqlalchemy import select, and_, delete, insert, distinct
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from ..models import User, Category, user_categories
@@ -90,11 +90,12 @@ class UserRepository:
     async def get_users_by_city_and_categories(
         db: AsyncSession, city: str, category_ids: List[int]
     ) -> List[User]:
-        """Получить пользователей по городу и категориям"""
+        """Получить пользователей по городу и категориям (с DISTINCT)"""
         result = await db.execute(
             select(User)
             .join(User.categories)
             .where(and_(User.city == city, Category.id.in_(category_ids)))
             .options(selectinload(User.categories))
+            .distinct(User.id)  # Добавляем DISTINCT для уникальности
         )
         return result.scalars().all()
