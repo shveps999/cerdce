@@ -233,49 +233,62 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
 
 @router.callback_query(F.data == "liked_posts")
 async def show_liked_posts(callback: CallbackQuery, db: AsyncSession):
+    """Показ избранных постов с кнопками удаления"""
     user_id = callback.from_user.id
-    liked_posts = await PostService.get_liked_posts_with_details(db, user_id)
     
-    if not liked_posts:
-        await callback.message.edit_text(
-            "❤️ Ваше избранное пусто.",
-            reply_markup=get_main_keyboard()
-        )
-        return
+    try:
+        liked_posts = await PostService.get_liked_posts_with_details(db, user_id)
+        
+        if not liked_posts:
+            await callback.message.edit_text(
+                "❤️ Ваше избранное пусто.",
+                reply_markup=get_main_keyboard()
+            )
+            return
 
-    builder = InlineKeyboardBuilder()
-    message_text = "❤️ <b>Ваше избранное:</b>\n\n"
-    
-    for post in liked_posts:
-        categories = ", ".join(post.categories)
-        message_text += (
-            f"📌 <b>{post.title}</b>\n"
-            f"📅 {post.created_at.strftime('%d.%m.%Y')}\n"
-            f"🏷️ {categories}\n\n"
+        builder = InlineKeyboardBuilder()
+        message_text = "❤️ <b>Ваше избранное:</b>\n\n"
+        
+        for post in liked_posts:
+            categories = ", ".join(post.category_names)
+            like_date = post.likes[0].created_at  # Получаем дату лайка
+            
+            message_text += (
+                f"📌 <b>{post.title}</b>\n"
+                f"📅 Добавлено: {like_date.strftime('%d.%m.%Y %H:%M')}\n"
+                f"🏷️ Категории: {categories}\n\n"
+            )
+            builder.button(
+                text=f"❌ Удалить", 
+                callback_data=f"remove_like_{post.id}"
+            )
+        
+        builder.button(text="🔙 Назад", callback_data="main_menu")
+        builder.adjust(1)
+        
+        await callback.message.edit_text(
+            message_text,
+            reply_markup=builder.as_markup(),
+            parse_mode="HTML"
         )
-        builder.button(
-            text=f"❌ Удалить '{post.title[:15]}...'", 
-            callback_data=f"remove_like_{post.id}"
-        )
-    
-    builder.button(text="🔙 Главное меню", callback_data="main_menu")
-    builder.adjust(1)
-    
-    await callback.message.edit_text(
-        message_text,
-        reply_markup=builder.as_markup(),
-        parse_mode="HTML"
-    )
+    except Exception as e:
+        logfire.error(f"Error showing liked posts: {e}")
+        await callback.answer("❌ Ошибка загрузки избранного", show_alert=True)
 
 @router.callback_query(F.data.startswith("remove_like_"))
 async def remove_like_handler(callback: CallbackQuery, db: AsyncSession):
-    post_id = int(callback.data.split("_")[2])
-    user_id = callback.from_user.id
-    
-    success = await PostService.remove_like(db, user_id, post_id)
-    
-    if success:
-        await callback.answer("✅ Пост удалён из избранного")
-        await show_liked_posts(callback, db)
-    else:
-        await callback.answer("⚠️ Ошибка удаления", show_alert=True)
+    """Обработчик удаления из избранного"""
+    try:
+        post_id = int(callback.data.split("_")[-1])
+        user_id = callback.from_user.id
+        
+        success = await PostService.remove_like(db, user_id, post_id)
+        
+        if success:
+            await callback.answer("✅ Удалено из избранного")
+            await show_liked_posts(callback, db)  # Обновляем список
+        else:
+            await callback.answer("⚠️ Пост не найден в избранном", show_alert=True)
+    except Exception as e:
+        logfire.error(f"Error removing like: {e}")
+        await callback.answer("❌ Ошибка при удалении", show_alert=True)
