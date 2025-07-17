@@ -229,3 +229,31 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
             reply_markup=get_main_keyboard(),
         )
         await state.clear()
+
+
+@router.callback_query(F.data == "liked_posts")
+async def show_liked_posts(callback: CallbackQuery, db):
+    """Показать посты, которые лайкнул пользователь"""
+    user_id = callback.from_user.id
+    
+    # Получаем лайкнутые посты пользователя
+    liked_posts = await PostService.get_liked_posts(db, user_id)
+    
+    if not liked_posts:
+        await callback.message.edit_text(
+            "❤️ Вы еще не лайкнули ни одного поста.",
+            reply_markup=get_main_keyboard()
+        )
+        await callback.answer()
+        return
+    
+    # Формируем сообщение с лайкнутыми постами
+    message_text = "❤️ Ваши лайкнутые посты:\n\n"
+    for i, post in enumerate(liked_posts, 1):
+        message_text += f"{i}. {post.title}\n"
+    
+    await callback.message.edit_text(
+        message_text,
+        reply_markup=get_main_keyboard()
+    )
+    await callback.answer()
