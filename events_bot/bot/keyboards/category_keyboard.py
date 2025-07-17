@@ -40,7 +40,7 @@ def get_category_selection_keyboard(
     
     buttons = [
         InlineKeyboardButton(
-            text="✅ Подтвердить", callback_data=confirm_callback
+            text="❤️ Подтвердить", callback_data=confirm_callback
         )
     ]
     
