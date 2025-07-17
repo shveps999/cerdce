@@ -156,40 +156,42 @@ class PostService:
         return await PostRepository.get_feed_posts_count(db, user_id)
 
     @staticmethod
-async def get_liked_posts_with_details(db: AsyncSession, user_id: int) -> List[Tuple[Post, List[str]]]:
-    result = await db.execute(
-        select(Post, Like.created_at)
-        .join(Like, Like.post_id == Post.id)
-        .join(Post.categories)
-        .where(Like.user_id == user_id)
-        .order_by(Like.created_at.desc())
-    )
-    
-    posts_data = []
-    for post, like_date in result.all():
-        categories = [category.name for category in post.categories]
-        post.categories = categories
-        post.created_at = like_date
-        posts_data.append(post)
-    
-    return posts_data
+    async def get_liked_posts_with_details(db: AsyncSession, user_id: int) -> List[Post]:
+        """Получение избранных постов с категориями"""
+        result = await db.execute(
+            select(Post)
+            .join(Like, Like.post_id == Post.id)
+            .where(Like.user_id == user_id)
+            .options(selectinload(Post.categories))
+            .order_by(Like.created_at.desc())
+        )
+        
+        posts = result.scalars().all()
+        
+        # Добавляем временный атрибут с названиями категорий
+        for post in posts:
+            post.category_names = [c.name for c in post.categories]
+        
+        return posts
 
     @staticmethod
-async def remove_like(db: AsyncSession, user_id: int, post_id: int) -> bool:
-    try:
-        like = await db.execute(
-            select(Like)
-            .where(Like.user_id == user_id)
-            .where(Like.post_id == post_id)
-        )
-        like = like.scalar_one_or_none()
-        
-        if like:
-            await db.delete(like)
-            await db.commit()
-            return True
-        return False
-    except Exception as e:
-        logfire.error(f"Error removing like: {e}")
-        await db.rollback()
-        return False
+    async def remove_like(db: AsyncSession, user_id: int, post_id: int) -> bool:
+        """Удаление лайка с обработкой ошибок"""
+        try:
+            result = await db.execute(
+                select(Like)
+                .where(Like.user_id == user_id)
+                .where(Like.post_id == post_id)
+                .limit(1)
+            )
+            like = result.scalar_one_or_none()
+            
+            if like:
+                await db.delete(like)
+                await db.commit()
+                return True
+            return False
+        except Exception as e:
+            logfire.error(f"Error removing like: {e}")
+            await db.rollback()
+            return False
