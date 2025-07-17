@@ -105,10 +105,11 @@ class ModerationRecord(Base, TimestampMixin):
 class Like(Base, TimestampMixin):
     __tablename__ = "likes"
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
-    user: Mapped["User"] = relationship(back_populates="likes")
-    post: Mapped["Post"] = relationship(back_populates="likes")
-
-    __table_args__ = ()
+    __table_args__ = (
+        # Уникальный индекс
+        Index('uq_like_user_post', 'user_id', 'post_id', unique=True),
+    )
