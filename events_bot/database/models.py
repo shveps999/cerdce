@@ -1,6 +1,6 @@
 from sqlalchemy import (
     String, Text, DateTime, Boolean, ForeignKey,
-    Table, Column, Integer, Enum, BigInteger
+    Table, Column, Integer, Enum, BigInteger, Index
 )
 from sqlalchemy.orm import DeclarativeBase, mapped_column, relationship, Mapped
 from typing import List, Optional
@@ -109,7 +109,9 @@ class Like(Base, TimestampMixin):
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
+    user: Mapped["User"] = relationship(back_populates="likes")
+    post: Mapped["Post"] = relationship(back_populates="likes")
+
     __table_args__ = (
-        # Уникальный индекс
         Index('uq_like_user_post', 'user_id', 'post_id', unique=True),
     )
