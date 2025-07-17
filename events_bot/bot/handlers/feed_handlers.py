@@ -213,7 +213,7 @@ async def handle_post_heart(callback: CallbackQuery, post_id: int, db, data):
         action_text = "добавлено" if result["action"] == "added" else "удалено"
         likes_count = result["likes_count"]
         
-        response_text = f"Сердечко {action_text}!\n\n"
+        response_text = f"Сердеце {action_text}!\n\n Обновленный список в разделе «‎Мои события»"
         response_text += f"❤️ Всего сердец: {likes_count}"
         
         await callback.answer(response_text, show_alert=True)
