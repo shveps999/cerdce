@@ -47,7 +47,6 @@ class User(Base, TimestampMixin):
     city: Mapped[Optional[str]] = mapped_column(String(100))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Relationships
     categories: Mapped[List["Category"]] = relationship(
         secondary=user_categories, back_populates="users"
     )
@@ -112,6 +111,4 @@ class Like(Base, TimestampMixin):
     user: Mapped["User"] = relationship(back_populates="likes")
     post: Mapped["Post"] = relationship(back_populates="likes")
 
-    __table_args__ = (
-        # Уникальный индекс для предотвращения дублирования лайков
-    )
+    __table_args__ = ()
