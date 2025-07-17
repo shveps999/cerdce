@@ -32,7 +32,7 @@ def get_category_selection_keyboard(
     
     for category in categories:
         is_selected = category.id in selected_ids
-        text = f"{category.name} {'❤️' if is_selected else '🤍'}"
+        text = f"{category.name} {'❤️‍🔥' if is_selected else '🤍'}"
         builder.button(text=text, callback_data=f"{prefix}{category.id}")
     builder.adjust(2)
     
@@ -40,7 +40,7 @@ def get_category_selection_keyboard(
     
     buttons = [
         InlineKeyboardButton(
-            text="Подтвердить ❤️", callback_data=confirm_callback
+            text="Подтвердить", callback_data=confirm_callback
         )
     ]
     
