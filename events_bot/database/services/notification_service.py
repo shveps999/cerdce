@@ -52,9 +52,8 @@ class NotificationService:
         published_str = published_at.strftime('%d.%m.%Y %H:%M') if published_at else ''
         
         return (
-            f"Новый пост в категориях: {category_str}\n\n"
-            f"🏷 {post.title}\n\n"
-            f"📝 {post.content}\n\n"
-            f"👤 Автор: {author_name}\n"
+            f"{category_str}\n\n"
+            f"*{post.title}*\n\n"
+            f"{post.content}\n\n"
             f"⏰ {published_str}"
         )
