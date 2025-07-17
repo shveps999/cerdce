@@ -122,22 +122,17 @@ class PostService:
         return await PostRepository.get_feed_posts_count(db, user_id)
 
     @staticmethod
-    async def get_liked_posts_with_details(db: AsyncSession, user_id: int) -> List[Post]:
-        result = await db.execute(
-            select(Post)
+    async def get_liked_posts_with_details(db: AsyncSession, user_id: int):
+    async with db.begin():
+        stmt = (
+            select(Post, Like.created_at)
             .join(Like, Like.post_id == Post.id)
-            .where(Like.user_id == user_id)
             .options(selectinload(Post.categories))
-            .order_by(Like.created_at.desc())
+            .where(Like.user_id == user_id)
+            .execution_options(populate_existing=True)
         )
-        
-        posts = result.scalars().all()
-        for post in posts:
-            post.category_names = [c.name for c in post.categories]
-            if post.likes:
-                post.like_date = post.likes[0].created_at
-        
-        return posts
+        result = await db.execute(stmt)
+        return [post for post, _ in result.all()]
 
     @staticmethod
     async def remove_like(db: AsyncSession, user_id: int, post_id: int) -> bool:
