@@ -71,6 +71,7 @@ class User(Base, TimestampMixin):
     last_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    likes: Mapped[List["Like"]] = relationship(back_populates="user")
 
     # Связи
     categories: Mapped[List["Category"]] = relationship(
@@ -112,6 +113,7 @@ class Post(Base, TimestampMixin):
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
     published_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, nullable=True)
+    likes: Mapped[List["Like"]] = relationship(back_populates="post")
 
     # Связи
     author: Mapped[User] = relationship(back_populates="posts")
@@ -142,17 +144,13 @@ class ModerationRecord(Base, TimestampMixin):
 
 
 class Like(Base, TimestampMixin):
-    """Модель лайка пользователя на пост"""
-
     __tablename__ = "likes"
-
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"), nullable=False)
-
-    # Связи
-    user: Mapped[User] = relationship()
-    post: Mapped[Post] = relationship()
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
+    
+    user: Mapped["User"] = relationship(back_populates="likes")
+    post: Mapped["Post"] = relationship(back_populates="likes")
 
     # Уникальный индекс для предотвращения дублирования лайков
     __table_args__ = (
