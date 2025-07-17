@@ -151,3 +151,14 @@ class PostService:
     async def get_feed_posts_count(db: AsyncSession, user_id: int) -> int:
         """Получить общее количество постов для ленты пользователя"""
         return await PostRepository.get_feed_posts_count(db, user_id)
+
+    @staticmethod
+    async def get_liked_posts(db, user_id: int) -> List[Post]:
+        """Получить все лайкнутые пользователем посты"""
+    result = await db.execute(
+        select(Post)
+        .join(Like, Like.post_id == Post.id)
+        .where(Like.user_id == user_id)
+        .order_by(Like.created_at.desc())
+    )
+        return result.scalars().all()
