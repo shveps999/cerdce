@@ -232,28 +232,50 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
 
 
 @router.callback_query(F.data == "liked_posts")
-async def show_liked_posts(callback: CallbackQuery, db):
-    """Показать посты, которые лайкнул пользователь"""
+async def show_liked_posts(callback: CallbackQuery, db: AsyncSession):
     user_id = callback.from_user.id
-    
-    # Получаем лайкнутые посты пользователя
-    liked_posts = await PostService.get_liked_posts(db, user_id)
+    liked_posts = await PostService.get_liked_posts_with_details(db, user_id)
     
     if not liked_posts:
         await callback.message.edit_text(
-            "❤️ Вы еще не лайкнули ни одного поста.",
+            "❤️ Ваше избранное пусто.",
             reply_markup=get_main_keyboard()
         )
-        await callback.answer()
         return
+
+    builder = InlineKeyboardBuilder()
+    message_text = "❤️ <b>Ваше избранное:</b>\n\n"
     
-    # Формируем сообщение с лайкнутыми постами
-    message_text = "❤️ Ваши лайкнутые посты:\n\n"
-    for i, post in enumerate(liked_posts, 1):
-        message_text += f"{i}. {post.title}\n"
+    for post in liked_posts:
+        categories = ", ".join(post.categories)
+        message_text += (
+            f"📌 <b>{post.title}</b>\n"
+            f"📅 {post.created_at.strftime('%d.%m.%Y')}\n"
+            f"🏷️ {categories}\n\n"
+        )
+        builder.button(
+            text=f"❌ Удалить '{post.title[:15]}...'", 
+            callback_data=f"remove_like_{post.id}"
+        )
+    
+    builder.button(text="🔙 Главное меню", callback_data="main_menu")
+    builder.adjust(1)
     
     await callback.message.edit_text(
         message_text,
-        reply_markup=get_main_keyboard()
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
     )
-    await callback.answer()
+
+@router.callback_query(F.data.startswith("remove_like_"))
+async def remove_like_handler(callback: CallbackQuery, db: AsyncSession):
+    post_id = int(callback.data.split("_")[2])
+    user_id = callback.from_user.id
+    
+    success = await PostService.remove_like(db, user_id, post_id)
+    
+    if success:
+        await callback.answer("✅ Пост удалён из избранного")
+        await show_liked_posts(callback, db)
+    else:
+        await callback.answer("⚠️ Ошибка удаления", show_alert=True)
