@@ -39,7 +39,7 @@ def format_post_for_feed(post, current_position: int, total_posts: int, likes_co
     published_str = published_at.strftime('%d.%m.%Y %H:%M') if published_at else ''
     
     return (
-        f"Актуальные события\n\n"
+        f"📰 Лента постов\n\n"
         f"📝 *{post.title}*\n\n"
         f"{post.content}\n\n"
         f"🏙️ Университет: {post_city}\n"
@@ -171,7 +171,7 @@ async def handle_post_heart(callback: CallbackQuery, post_id: int, db, data):
         action_text = "добавлено" if result["action"] == "added" else "удалено"
         
         await callback.answer(
-            f"Событие добавлено в избранное {action_text}! ❤️ {result['likes_count']}",
+            f"Сердечко {action_text}! ❤️ {result['likes_count']}",
             show_alert=False
         )
         
