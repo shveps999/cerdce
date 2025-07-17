@@ -1,7 +1,8 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
+from ..models import Post, Like  # Добавляем импорт Like
 from ..repositories import PostRepository
-from ..models import Post
 import os
 import logfire
 from events_bot.bot.keyboards.moderation_keyboard import get_moderation_keyboard
@@ -15,7 +16,8 @@ class PostService:
 
     @staticmethod
     async def create_post(
-        db: AsyncSession, title: str, content: str, author_id: int, category_ids: List[int], city: str = None, image_id: str = None
+        db: AsyncSession, title: str, content: str, author_id: int, 
+        category_ids: List[int], city: str = None, image_id: str = None
     ) -> Post:
         """Создать новый пост"""
         return await PostRepository.create_post(
@@ -24,7 +26,8 @@ class PostService:
 
     @staticmethod
     async def create_post_and_send_to_moderation(
-        db: AsyncSession, title: str, content: str, author_id: int, category_ids: List[int], city: str = None, image_id: str = None, bot=None
+        db: AsyncSession, title: str, content: str, author_id: int, 
+        category_ids: List[int], city: str = None, image_id: str = None, bot=None
     ) -> Post:
         """Создать пост и отправить на модерацию"""
         # Создаем пост
@@ -153,12 +156,12 @@ class PostService:
         return await PostRepository.get_feed_posts_count(db, user_id)
 
     @staticmethod
-    async def get_liked_posts(db, user_id: int) -> List[Post]:
+    async def get_liked_posts(db: AsyncSession, user_id: int) -> List[Post]:
         """Получить все лайкнутые пользователем посты"""
-    result = await db.execute(
-        select(Post)
-        .join(Like, Like.post_id == Post.id)
-        .where(Like.user_id == user_id)
-        .order_by(Like.created_at.desc())
-    )
+        result = await db.execute(
+            select(Post)
+            .join(Like, Like.post_id == Post.id)
+            .where(Like.user_id == user_id)
+            .order_by(Like.created_at.desc())
+        )
         return result.scalars().all()
