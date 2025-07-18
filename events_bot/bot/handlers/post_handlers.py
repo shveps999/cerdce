@@ -12,7 +12,6 @@ from events_bot.bot.keyboards import (
 )
 from events_bot.storage import file_storage
 from loguru import logger
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = Router()
 
@@ -25,7 +24,10 @@ def register_post_handlers(dp: Router):
 @router.message(F.text == "/create_post")
 async def cmd_create_post(message: Message, state: FSMContext, db):
     """Обработчик команды /create_post"""
+    # Устанавливаем начальное состояние создания поста
     await state.set_state(PostStates.creating_post)
+    
+    # Сначала предлагаем выбрать город
     await message.answer(
         "🏙️ Выберите город для поста:",
         reply_markup=get_city_keyboard(for_post=True)
@@ -47,7 +49,10 @@ async def cmd_cancel_post(message: Message, state: FSMContext, db):
 @router.callback_query(F.data == "create_post")
 async def start_create_post(callback: CallbackQuery, state: FSMContext, db):
     """Начать создание поста через инлайн-кнопку"""
+    # Устанавливаем начальное состояние создания поста
     await state.set_state(PostStates.creating_post)
+    
+    # Сначала предлагаем выбрать город
     await callback.message.edit_text(
         "🏙️ Выберите город для поста:",
         reply_markup=get_city_keyboard(for_post=True)
@@ -71,8 +76,13 @@ async def cancel_post_creation(callback: CallbackQuery, state: FSMContext, db):
 async def process_post_city_selection(callback: CallbackQuery, state: FSMContext, db):
     """Обработка выбора города для поста"""
     city = callback.data[10:]  # Убираем префикс "post_city_"
+
+    # Сохраняем выбранный город
     await state.update_data(post_city=city)
+    
+    # Получаем все категории для выбора
     all_categories = await CategoryService.get_all_categories(db)
+    
     await callback.message.edit_text(
         f"🏙️ Город {city} выбран!\n\n📂 Теперь выберите категории для поста:",
         reply_markup=get_category_selection_keyboard(all_categories, for_post=True)
@@ -84,7 +94,7 @@ async def process_post_city_selection(callback: CallbackQuery, state: FSMContext
 @router.callback_query(PostStates.waiting_for_category_selection, F.data.startswith("post_category_"))
 async def process_post_category_selection(callback: CallbackQuery, state: FSMContext, db):
     """Мультивыбор категорий для поста"""
-    category_id = int(callback.data.split("_")[2])
+    category_id = int(callback.data.split("_")[2])  # post_category_123 -> 123
     data = await state.get_data()
     category_ids = data.get("category_ids", [])
 
@@ -94,13 +104,13 @@ async def process_post_category_selection(callback: CallbackQuery, state: FSMCon
         category_ids.append(category_id)
     await state.update_data(category_ids=category_ids)
 
+    # Получаем все категории для выбора
     all_categories = await CategoryService.get_all_categories(db)
     await callback.message.edit_text(
         "📂 Выберите одну или несколько категорий для поста (можно выбрать несколько):",
         reply_markup=get_category_selection_keyboard(all_categories, category_ids, for_post=True)
     )
     await callback.answer()
-
 
 @router.callback_query(PostStates.waiting_for_category_selection, F.data == "confirm_post_categories")
 @logger.catch
@@ -111,26 +121,30 @@ async def confirm_post_categories(callback: CallbackQuery, state: FSMContext, db
     if not category_ids:
         await callback.answer("Выберите хотя бы одну категорию", show_alert=True)
         return
-    
     await state.update_data(category_ids=category_ids)
+    logfire.info(f"Категории подтверждены для пользователя {callback.from_user.id}: {category_ids}")
     await callback.message.edit_text(
         f"📝 Создание поста в категориях: {len(category_ids)} выбрано\n\nВведите заголовок поста:"
     )
     await state.set_state(PostStates.waiting_for_title)
+    logfire.info(f"Состояние изменено на waiting_for_title для пользователя {callback.from_user.id}")
     await callback.answer()
-
 
 @router.message(PostStates.waiting_for_title)
 @logger.catch
 async def process_post_title(message: Message, state: FSMContext, db):
     """Обработка заголовка поста"""
+    logfire.info(f"Получен заголовок поста от пользователя {message.from_user.id}: {message.text}")
+    
     if len(message.text) > 100:
         await message.answer("❌ Заголовок слишком длинный. Максимум 100 символов.")
         return
 
     await state.update_data(title=message.text)
+    logfire.info(f"Заголовок сохранен в состоянии: {message.text}")
     await message.answer("📄 Введите содержание поста:")
     await state.set_state(PostStates.waiting_for_content)
+    logfire.info(f"Состояние изменено на waiting_for_content для пользователя {message.from_user.id}")
 
 
 @router.message(PostStates.waiting_for_content)
@@ -158,8 +172,9 @@ async def skip_post_link(message: Message, state: FSMContext, db):
 @router.message(PostStates.waiting_for_link)
 async def process_post_link(message: Message, state: FSMContext, db):
     """Обработка ссылки поста"""
+    # Простая проверка на валидность ссылки
     if not (message.text.startswith('http://') or message.text.startswith('https://')):
-        await message.answer("❌ Пожалуйста, введите корректную ссылку или отправьте /skip")
+        await message.answer("❌ Пожалуйста, введите корректную ссылку (начинающуюся с http:// или https://) или отправьте /skip")
         return
     
     await state.update_data(link=message.text)
@@ -183,27 +198,18 @@ async def process_post_image(message: Message, state: FSMContext, db):
         await message.answer("❌ Пожалуйста, отправьте изображение или нажмите /skip")
         return
 
+    # Получаем самое большое изображение
     photo = message.photo[-1]
+    
+    # Скачиваем файл
     file_info = await message.bot.get_file(photo.file_id)
     file_data = await message.bot.download_file(file_info.file_path)
+    
+    # Сохраняем файл
     file_id = await file_storage.save_file(file_data.read(), 'jpg')
     
     await state.update_data(image_id=file_id)
     await continue_post_creation(message, state, db)
-
-
-@router.message(F.text == "/delete_all_posts")
-async def cmd_delete_all_posts(message: Message, db: AsyncSession):
-    """Удаляет все посты (только для админов)"""
-    if not await UserService.is_admin(db, message.from_user.id):
-        return await message.answer("❌ Эта команда только для администраторов")
-    
-    try:
-        deleted_count = await PostService.delete_all_posts(db)
-        await message.answer(f"✅ Удалено {deleted_count} постов")
-    except Exception as e:
-        logger.error(f"Ошибка при удалении постов: {e}")
-        await message.answer("❌ Произошла ошибка при удалении постов")
 
 
 async def continue_post_creation(callback_or_message: Union[Message, CallbackQuery], state: FSMContext, db):
@@ -226,10 +232,12 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
         await state.clear()
         return
 
+    # Формируем окончательный контент поста
     final_content = content
     if link:
         final_content += f"\n\n🔗 Ссылка: {link}"
 
+    # Создаем один пост с несколькими категориями
     post = await PostService.create_post_and_send_to_moderation(
         db=db,
         title=title,
@@ -243,7 +251,7 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
 
     if post:
         await message.answer(
-            f"✅ Пост создан и отправлен на модерацию",
+            f"✅ Пост создан и отправлен на модерацию в городе {post_city} в {len(category_ids)} категориях!",
             reply_markup=get_main_keyboard(),
         )
         await state.clear()
@@ -253,8 +261,3 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
             reply_markup=get_main_keyboard(),
         )
         await state.clear()
-
-
-def register_post_handlers(dp: Router):
-    """Регистрация обработчиков постов"""
-    dp.include_router(router)
