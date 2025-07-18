@@ -24,10 +24,16 @@ class PostService:
         city: str = None, 
         image_id: str = None
     ) -> Post:
-        """Создать новый пост"""
-        return await PostRepository.create_post(
-            db, title, content, author_id, category_ids, city, image_id
+        """Создать новый пост со связями с категориями"""
+        post = await PostRepository.create_post(
+            db, title, content, author_id, city, image_id
         )
+        
+        if post:
+            # Добавляем связи с категориями
+            await PostRepository.add_categories_to_post(db, post.id, category_ids)
+        
+        return post
 
     @staticmethod
     async def create_post_and_send_to_moderation(
@@ -41,7 +47,7 @@ class PostService:
         bot=None
     ) -> Post:
         """Создать пост и отправить на модерацию"""
-        post = await PostRepository.create_post(
+        post = await PostService.create_post(
             db, title, content, author_id, category_ids, city, image_id
         )
         
@@ -107,7 +113,7 @@ class PostService:
     async def get_posts_by_categories(
         db: AsyncSession, category_ids: list[int]
     ) -> list[Post]:
-        """Получить посты по нескольким категориям"""
+        """Получить посты по нескольким категориям (без дубликатов)"""
         return await PostRepository.get_posts_by_categories(db, category_ids)
 
     @staticmethod
@@ -168,7 +174,7 @@ class PostService:
     async def get_feed_posts(
         db: AsyncSession, user_id: int, limit: int = 10, offset: int = 0
     ) -> List[Post]:
-        """Получить посты для ленты пользователя"""
+        """Получить посты для ленты пользователя (без дубликатов)"""
         return await PostRepository.get_feed_posts(db, user_id, limit, offset)
 
     @staticmethod
