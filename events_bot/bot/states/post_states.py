@@ -9,4 +9,5 @@ class PostStates(StatesGroup):
     waiting_for_category_selection = State()
     waiting_for_title = State()
     waiting_for_content = State()
+    waiting_for_link = State()  # Новое состояние для ссылки
     waiting_for_image = State()
