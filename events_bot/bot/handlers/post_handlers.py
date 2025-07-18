@@ -155,19 +155,45 @@ async def process_post_content(message: Message, state: FSMContext, db):
         return
 
     await state.update_data(content=message.text)
+    await message.answer("🔗 Введите ссылку (или отправьте /skip чтобы пропустить):")
+    await state.set_state(PostStates.waiting_for_link)
+
+
+@router.message(PostStates.waiting_for_link, F.text == "/skip")
+async def skip_post_link(message: Message, state: FSMContext, db):
+    """Пропуск ввода ссылки"""
+    await state.update_data(link=None)
     await message.answer(
         "🖼️ Отправьте изображение для поста (или нажмите /skip для пропуска):"
     )
     await state.set_state(PostStates.waiting_for_image)
 
 
+@router.message(PostStates.waiting_for_link)
+async def process_post_link(message: Message, state: FSMContext, db):
+    """Обработка ссылки поста"""
+    # Простая проверка на валидность ссылки
+    if not (message.text.startswith('http://') or message.text.startswith('https://')):
+        await message.answer("❌ Пожалуйста, введите корректную ссылку (начинающуюся с http:// или https://) или отправьте /skip")
+        return
+    
+    await state.update_data(link=message.text)
+    await message.answer(
+        "🖼️ Отправьте изображение для поста (или нажмите /skip для пропуска):"
+    )
+    await state.set_state(PostStates.waiting_for_image)
+
+
+@router.message(PostStates.waiting_for_image, F.text == "/skip")
+async def skip_post_image(message: Message, state: FSMContext, db):
+    """Пропуск добавления изображения"""
+    await state.update_data(image_id=None)
+    await continue_post_creation(message, state, db)
+
+
 @router.message(PostStates.waiting_for_image)
 async def process_post_image(message: Message, state: FSMContext, db):
     """Обработка изображения поста"""
-    if message.text == "/skip":
-        await continue_post_creation(message, state, db)
-        return
-
     if not message.photo:
         await message.answer("❌ Пожалуйста, отправьте изображение или нажмите /skip")
         return
@@ -193,6 +219,7 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
     data = await state.get_data()
     title = data.get("title")
     content = data.get("content")
+    link = data.get("link")
     category_ids = data.get("category_ids", [])
     post_city = data.get("post_city")
     image_id = data.get("image_id")
@@ -205,11 +232,16 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
         await state.clear()
         return
 
+    # Формируем окончательный контент поста
+    final_content = content
+    if link:
+        final_content += f"\n\n🔗 Ссылка: {link}"
+
     # Создаем один пост с несколькими категориями
     post = await PostService.create_post_and_send_to_moderation(
         db=db,
         title=title,
-        content=content,
+        content=final_content,
         author_id=user_id,
         category_ids=category_ids,
         city=post_city,
@@ -219,7 +251,7 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
 
     if post:
         await message.answer(
-            f"✅ Пост создан и отправлен на модерацию в городе {post_city} в {len(category_ids)} категориях!",
+            f"✅ Пост создан и отправлен на модерацию в категориях {len(category_ids)}!",
             reply_markup=get_main_keyboard(),
         )
         await state.clear()
