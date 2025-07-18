@@ -251,7 +251,7 @@ async def continue_post_creation(callback_or_message: Union[Message, CallbackQue
 
     if post:
         await message.answer(
-            f"✅ Пост создан и отправлен на модерацию в категориях {len(category_ids)}!",
+            f"✅ Пост создан и отправлен на модерацию",
             reply_markup=get_main_keyboard(),
         )
         await state.clear()
