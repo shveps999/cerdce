@@ -6,8 +6,8 @@ def get_main_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     
     builder.button(text="📮 Смотреть подборку ⠀⠀", callback_data="feed")
-    builder.button(text="❤️ Избранные события ⠀ ", callback_data="liked_posts")
-    builder.button(text="✏️ Создать свое событие", callback_data="create_post") 
+    builder.button(text="❤️ Избранное ⠀  ⠀  ⠀  ⠀", callback_data="liked_posts")
+    builder.button(text="✏️ Создать свой пост ⠀  ", callback_data="create_post") 
     builder.button(text="🏙 Изменить город ⠀  ⠀ ", callback_data="change_city")
     builder.button(text="⭐️ Изменить категории⠀⠀", callback_data="change_category")
     builder.button(text="💬 Помощь⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   ", callback_data="help")
